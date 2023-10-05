@@ -52,9 +52,9 @@ pub struct UcanPayload<F = DefaultFact, C = DefaultCapabilityParser> {
 /// A UCAN
 #[derive(Clone, Debug)]
 pub struct Ucan<F = DefaultFact, C = DefaultCapabilityParser> {
-    pub(crate) header: jose_b64::serde::Json<UcanHeader>,
-    pub(crate) payload: jose_b64::serde::Json<UcanPayload<F, C>>,
-    pub(crate) signature: jose_b64::serde::Bytes,
+    pub header: jose_b64::serde::Json<UcanHeader>,
+    pub payload: jose_b64::serde::Json<UcanPayload<F, C>>,
+    pub signature: jose_b64::serde::Bytes,
 }
 
 impl<F, C> Ucan<F, C>
@@ -156,15 +156,21 @@ where
         self.validate(at_time, did_verifier_map)?;
 
         for capability in self.capabilities() {
-            if !resource.is_valid_attenuation(capability.resource()) {
+            let attenuated = Capability {
+                resource: dyn_clone::clone_box(&resource),
+                ability: dyn_clone::clone_box(&ability),
+                caveat: dyn_clone::clone_box(capability.caveat()),
+            };
+
+            if !attenuated.is_subsumed_by(&capability) {
                 continue;
             }
 
-            if !ability.is_valid_attenuation(capability.ability()) {
-                continue;
+            if self.issuer() == issuer {
+                capabilities.push(attenuated.clone());
             }
 
-            proof_queue.push_back((self.clone(), capability.clone(), capability.clone()));
+            proof_queue.push_back((self.clone(), attenuated, capability.clone()));
         }
 
         while let Some((ucan, attenuated_cap, leaf_cap)) = proof_queue.pop_front() {
@@ -206,33 +212,16 @@ where
                             continue;
                         }
 
-                        if ucan.validate(at_time, did_verifier_map).is_err() {
+                        if proof_ucan.validate(at_time, did_verifier_map).is_err() {
                             continue;
                         }
 
-                        for capability in self.capabilities() {
-                            if !attenuated_cap
-                                .resource()
-                                .is_valid_attenuation(capability.resource())
-                            {
+                        for capability in proof_ucan.capabilities() {
+                            if !attenuated_cap.is_subsumed_by(&capability) {
                                 continue;
                             }
 
-                            if !attenuated_cap
-                                .ability()
-                                .is_valid_attenuation(capability.ability())
-                            {
-                                continue;
-                            }
-
-                            if !attenuated_cap
-                                .caveat()
-                                .is_valid_attenuation(capability.caveat())
-                            {
-                                continue;
-                            }
-
-                            if ucan.issuer() == issuer {
+                            if proof_ucan.issuer() == issuer {
                                 capabilities.push(leaf_cap.clone());
                             }
 

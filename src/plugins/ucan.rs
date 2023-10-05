@@ -68,7 +68,9 @@ impl Plugin for UcanPlugin {
         _ability: &Self::Ability,
         deserializer: &mut dyn erased_serde::Deserializer<'_>,
     ) -> Result<Option<Self::Caveat>, Self::Error> {
-        erased_serde::deserialize(deserializer).map_err(|e| anyhow::anyhow!(e))
+        Ok(Some(
+            erased_serde::deserialize(deserializer).map_err(|e| anyhow::anyhow!(e))?,
+        ))
     }
 }
 
