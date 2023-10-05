@@ -11,7 +11,7 @@ use crate::{
     error::Error,
     semantics::{
         ability::{Ability, TopAbility},
-        caveat::Caveat,
+        caveat::{Caveat, EmptyCaveat},
         resource::Resource,
     },
 };
@@ -20,7 +20,8 @@ pub mod ucan;
 pub mod wnfs;
 
 #[distributed_slice]
-static STATIC_PLUGINS: [&dyn Plugin<
+#[doc(hidden)]
+pub static STATIC_PLUGINS: [&dyn Plugin<
     Resource = Box<dyn Resource>,
     Ability = Box<dyn Ability>,
     Caveat = Box<dyn Caveat>,
@@ -88,7 +89,8 @@ where
     C: 'static,
     E: 'static,
 {
-    inner: &'static dyn Plugin<Resource = R, Ability = A, Caveat = C, Error = E>,
+    #[doc(hidden)]
+    pub inner: &'static dyn Plugin<Resource = R, Ability = A, Caveat = C, Error = E>,
 }
 
 impl<R, A, C, E> Plugin for WrappedPlugin<R, A, C, E>
@@ -148,6 +150,13 @@ where
         let Some(resource) = resource.downcast_ref::<R>() else {
             return Ok(None);
         };
+
+        if ability.is::<TopAbility>() {
+            return Ok(Some(Box::new(
+                erased_serde::deserialize::<EmptyCaveat>(deserializer)
+                    .map_err(|e| anyhow::anyhow!(e))?,
+            )));
+        }
 
         let Some(ability) = ability.downcast_ref::<A>() else {
             return Ok(None);
@@ -216,7 +225,7 @@ macro_rules! register_plugin {
             Resource = Box<dyn $crate::semantics::resource::Resource>,
             Ability = Box<dyn $crate::semantics::ability::Ability>,
             Caveat = Box<dyn $crate::semantics::caveat::Caveat>,
-            Error = Error,
+            Error = $crate::error::Error,
         > = &$crate::plugins::WrappedPlugin { inner: $plugin };
     };
 }

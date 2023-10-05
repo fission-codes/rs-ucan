@@ -175,10 +175,23 @@ where
         })
         .map_err(|e| Error::InternalUcanError { msg: e.to_string() })?;
 
-        let signature = signer
-            .sign(&[header.as_ref(), ".".as_bytes(), payload.as_ref()].concat())
-            .to_vec()
-            .into();
+        let header_enc = serde_json::to_value(&header)
+            .map_err(|e| Error::InternalUcanError { msg: e.to_string() })?;
+
+        let payload_enc = serde_json::to_value(&payload)
+            .map_err(|e| Error::InternalUcanError { msg: e.to_string() })?;
+
+        let signed_data = format!(
+            "{}.{}",
+            header_enc.as_str().ok_or(Error::InternalUcanError {
+                msg: "Expected base64 encoding of header".to_string(),
+            })?,
+            payload_enc.as_str().ok_or(Error::InternalUcanError {
+                msg: "Expected base64 encoding of payload".to_string(),
+            })?,
+        );
+
+        let signature = signer.sign(signed_data.as_ref()).to_vec().into();
 
         Ok(Ucan {
             header,
