@@ -52,9 +52,9 @@ pub struct UcanPayload<F = DefaultFact, C = DefaultCapabilityParser> {
 /// A UCAN
 #[derive(Clone, Debug)]
 pub struct Ucan<F = DefaultFact, C = DefaultCapabilityParser> {
-    pub header: jose_b64::serde::Json<UcanHeader>,
-    pub payload: jose_b64::serde::Json<UcanPayload<F, C>>,
-    pub signature: jose_b64::serde::Bytes,
+    pub(crate) header: jose_b64::serde::Json<UcanHeader>,
+    pub(crate) payload: jose_b64::serde::Json<UcanPayload<F, C>>,
+    pub(crate) signature: jose_b64::serde::Bytes,
 }
 
 impl<F, C> Ucan<F, C>
@@ -473,4 +473,11 @@ where
 {
     Deserialize::deserialize(deserializer)
         .map_err(|_| serde::de::Error::custom("required field is missing or has invalid type"))
+}
+
+#[cfg(test)]
+#[test]
+fn test_send_sync() {
+    fn only_sync<T: Send + Sync>() {}
+    only_sync::<Ucan>()
 }
