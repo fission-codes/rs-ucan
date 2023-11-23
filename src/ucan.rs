@@ -136,6 +136,7 @@ where
 
     /// Returns true if the UCAN is authorized by the given issuer to
     /// perform the ability against the resource
+    #[tracing::instrument(level = "trace", skip_all)]
     pub fn capabilities_for<R, A, S>(
         &self,
         issuer: impl AsRef<str>,
@@ -150,6 +151,14 @@ where
         A: Ability,
         S: Store<RawCodec, Error = anyhow::Error>,
     {
+        tracing::trace!(
+            issuer = %issuer.as_ref(),
+            resource = %resource.to_string(),
+            ability = %ability.to_string(),
+            %at_time,
+            ucan = %self.encode()?,
+            "Listing capabilities."
+        );
         let issuer = issuer.as_ref();
 
         let mut capabilities = vec![];
@@ -161,10 +170,12 @@ where
             let attenuated = Capability::clone_box(&resource, &ability, capability.caveat());
 
             if !attenuated.is_subsumed_by(capability) {
+                tracing::trace!(?attenuated, "Filtering out capability from root UCAN that can't derive requested capability.");
                 continue;
             }
 
             if self.issuer() == issuer {
+                tracing::trace!(?attenuated, "Adding capability by parenthood");
                 capabilities.push(attenuated.clone())
             }
 
@@ -172,6 +183,13 @@ where
         }
 
         while let Some((ucan, attenuated_cap, leaf_cap)) = proof_queue.pop_front() {
+            tracing::trace!(
+                ucan = %ucan.encode()?,
+                ?attenuated_cap,
+                ?leaf_cap,
+                "Need to prove leaf_cap subsumes attenuated_cap using ucan's proofs."
+            );
+
             for proof_cid in ucan.proofs().unwrap_or(vec![]) {
                 match store
                     .read::<Ipld>(proof_cid)
@@ -198,28 +216,52 @@ where
                                 ),
                             })?;
 
-                        if ucan.expires_at() > proof_ucan.expires_at() {
+                        if match (ucan.expires_at(), proof_ucan.expires_at()) {
+                            (_, None) => false,      // Unbounded proof
+                            (None, Some(_)) => true, // Unbounded child, but bounded proof is not ok
+                            (Some(child), Some(parent)) => child > parent,
+                        } {
+                            tracing::trace!(
+                                %proof_cid,
+                                ucan_exp = ?ucan.expires_at(),
+                                proof_exp = ?proof_ucan.expires_at(),
+                                "Expiration not subsumed."
+                            );
                             continue;
                         }
 
-                        if ucan.not_before() < proof_ucan.not_before() {
+                        if match (ucan.not_before(), proof_ucan.not_before()) {
+                            (_, None) => false,      // Unbounded proof
+                            (None, Some(_)) => true, // Unbounded child, but bounded proof is not ok
+                            (Some(child), Some(parent)) => child < parent,
+                        } {
+                            tracing::trace!(
+                                %proof_cid,
+                                ucan_nbf = ?ucan.not_before(),
+                                proof_nbf = ?proof_ucan.not_before(),
+                                "Not before not subsumed."
+                            );
                             continue;
                         }
 
                         if ucan.issuer() != proof_ucan.audience() {
+                            tracing::trace!(%proof_cid, "Issuer audience mismatch.");
                             continue;
                         }
 
                         if proof_ucan.validate(at_time, did_verifier_map).is_err() {
+                            tracing::trace!(%proof_cid, "Proof UCAN invalid");
                             continue;
                         }
 
                         for capability in proof_ucan.capabilities() {
                             if !attenuated_cap.is_subsumed_by(capability) {
+                                tracing::trace!(%proof_cid, ?capability, ?attenuated_cap, "capability does not subsume attenuated_cap");
                                 continue;
                             }
 
                             if proof_ucan.issuer() == issuer {
+                                tracing::trace!(%proof_cid, ?leaf_cap, "Capability rooted in issuer.");
                                 capabilities.push(leaf_cap.clone());
                             }
 
