@@ -232,10 +232,12 @@ impl MulticodecPubKey {
             MulticodecPubKey::RSAPKCS1 => match pub_key.len() {
                 94 | 126 | 162 | 226 | 294 | 422 | 546 => {}
                 n => {
-                    return Err(anyhow!(
-                            "expected 94, 126, 162, 226, 294, 422, or 546 bytes for RSA PKCS1 public key, got {}",
-                            n
-                        ));
+                    // TODO: These public key sizes are for SubjectPublicKeyInfo encoded public keys, not
+                    // for RsaPublicKey encoded values, which the did:key spec uses.
+                    // return Err(anyhow!(
+                    //         "expected 94, 126, 162, 226, 294, 422, or 546 bytes for RSA PKCS1 public key, got {}",
+                    //         n
+                    //     ));
                 }
             },
             _ => return Err(anyhow!("unsupported public key type")),
