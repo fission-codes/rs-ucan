@@ -28,7 +28,7 @@ use crate::crypto::rs512;
 use crate::crypto::bls12381;
 
 /// Signature types that are verifiable by `did:key` [`Verifier`]s.
-#[derive(Debug, Clone, PartialEq, Eq, EnumAsInner)]
+#[derive(Debug, Clone, EnumAsInner)]
 pub enum Signer {
     /// `EdDSA` signature.
     #[cfg(feature = "eddsa")]

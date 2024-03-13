@@ -42,13 +42,13 @@ base64 = "0.21"
 blst = { version = "0.3.11", optional = true, default-features = false }
 bs58 = "0.5"
 
+# Code Convenience
+derive_builder = "0.20"
+
 # Web Stack
 did_url = "0.1"
 ecdsa = { version = "0.16.8", features = ["alloc"], optional = true, default-features = false }
 ed25519-dalek = { version = "2.0.0", features = ["rand_core"], optional = true }
-
-# Code Convenience
-derive_builder = "0.20"
 enum-as-inner = "0.6"
 getrandom = { version = "0.2", features = ["js", "rdrand"] }
 k256 = { version = "0.13.1", features = ["ecdsa"], optional = true, default-features = false }
@@ -85,10 +85,12 @@ wasm-bindgen-derive = "0.2"
 web-sys = { version = "0.3", features = ["Crypto", "CryptoKey", "CryptoKeyPair", "SubtleCrypto"] }
 
 [dev-dependencies]
+hex = "0.4.3"
 libipld = "0.16"
 rand = "0.8"
-testresult = "0.3"
+serde_ipld_dagcbor = "0.4.2"
 test-log = "0.2"
+testresult = "0.3"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 criterion = "0.4"

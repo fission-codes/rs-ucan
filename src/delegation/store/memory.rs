@@ -270,43 +270,37 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::ability::arguments;
     use crate::ability::command::Command;
+    use crate::ability::crud::Crud;
     use crate::crypto::signature::Envelope;
     use crate::delegation::store::Store;
+    use crate::invocation::promise::{self, Resolvable};
+    use crate::invocation::Agent;
+    use crate::ipld;
+    use libipld::json::DagJsonCodec;
+    use libipld_core::codec::Codec;
     use libipld_core::ipld::Ipld;
+    use libipld_core::serde::Serializer;
     use rand::thread_rng;
     use testresult::TestResult;
 
+    fn generate_did() -> (crate::did::preset::Signer, crate::did::preset::Verifier) {
+        let sk = ed25519_dalek::SigningKey::generate(&mut thread_rng());
+        let signer = crate::did::preset::Signer::Key(crate::did::key::Signer::EdDsa(sk.clone()));
+
+        let verifier =
+            crate::did::preset::Verifier::Key(crate::did::key::Verifier::EdDsa(sk.verifying_key()));
+
+        (signer, verifier)
+    }
+
     #[test_log::test]
     fn test_powerbox_ucan_resource() -> TestResult {
-        let server_sk = ed25519_dalek::SigningKey::generate(&mut thread_rng());
-        let server_signer =
-            crate::did::preset::Signer::Key(crate::did::key::Signer::EdDsa(server_sk.clone()));
-
-        let server = crate::did::preset::Verifier::Key(crate::did::key::Verifier::EdDsa(
-            server_sk.verifying_key(),
-        ));
-
-        let account_sk = ed25519_dalek::SigningKey::generate(&mut thread_rng());
-        let account = crate::did::preset::Verifier::Key(crate::did::key::Verifier::EdDsa(
-            account_sk.verifying_key(),
-        ));
-        let account_signer =
-            crate::did::preset::Signer::Key(crate::did::key::Signer::EdDsa(account_sk));
-
-        let dnslink_sk = ed25519_dalek::SigningKey::generate(&mut thread_rng());
-        let dnslink = crate::did::preset::Verifier::Key(crate::did::key::Verifier::EdDsa(
-            dnslink_sk.verifying_key(),
-        ));
-        let dnslink_signer =
-            crate::did::preset::Signer::Key(crate::did::key::Signer::EdDsa(dnslink_sk));
-
-        let device_sk = ed25519_dalek::SigningKey::generate(&mut thread_rng());
-        let device = crate::did::preset::Verifier::Key(crate::did::key::Verifier::EdDsa(
-            device_sk.verifying_key(),
-        ));
-        let device_signer =
-            crate::did::preset::Signer::Key(crate::did::key::Signer::EdDsa(device_sk));
+        let (server_signer, server) = generate_did();
+        let (account_signer, account) = generate_did();
+        let (dnslink_signer, dnslink) = generate_did();
+        let (device_signer, device) = generate_did();
 
         // FIXME perhaps add this back upstream as a named const
         let varsig_header = crate::crypto::varsig::header::Preset::EdDsa(
@@ -330,10 +324,8 @@ mod tests {
                 .audience(server.clone())
                 .command("/".into())
                 .expiration(crate::time::Timestamp::five_years_from_now())
-                .build()
-                .expect("FIXME"),
-        )
-        .expect("signature to work");
+                .build()?,
+        )?;
 
         // 2.                            server -a-> device
         let account_device_ucan = crate::Delegation::try_sign(
@@ -345,10 +337,8 @@ mod tests {
                 .audience(device.clone())
                 .command("/".into())
                 .expiration(crate::time::Timestamp::five_years_from_now())
-                .build()
-                .expect("FIXME"), // I don't love this is now failable
-        )
-        .expect("signature to work");
+                .build()?, // I don't love this is now failable
+        )?;
 
         // 3.  dnslink -d-> account
         let dnslink_ucan = crate::Delegation::try_sign(
@@ -360,27 +350,64 @@ mod tests {
                 .audience(account.clone())
                 .command("/".into())
                 .expiration(crate::time::Timestamp::five_years_from_now())
-                .build()
-                .expect("FIXME"),
-        )
-        .expect("signature to work");
+                .build()?,
+        )?;
 
         #[derive(Debug, Clone, PartialEq)]
-        pub struct AccountInfo {}
+        pub struct AccountManage;
 
-        impl Command for AccountInfo {
+        impl Command for AccountManage {
             const COMMAND: &'static str = "/account/info";
         }
 
-        impl From<Ipld> for AccountInfo {
-            fn from(_: Ipld) -> Self {
-                AccountInfo {}
+        impl TryFrom<Ipld> for AccountManage {
+            type Error = ();
+
+            fn try_from(ipld: Ipld) -> Result<Self, Self::Error> {
+                match ipld {
+                    Ipld::String(s) => match s.as_ref() {
+                        "account/info" => Ok(AccountManage),
+                        _ => Err(()),
+                    },
+                    _ => Err(()),
+                }
             }
         }
 
-        impl From<AccountInfo> for Ipld {
-            fn from(_: AccountInfo) -> Self {
-                Ipld::Null
+        impl From<AccountManage> for Ipld {
+            fn from(info: AccountManage) -> Self {
+                match info {
+                    AccountManage => Ipld::String("account/info".to_string()),
+                }
+            }
+        }
+
+        impl promise::Resolvable for AccountManage {
+            type Promised = AccountManage;
+        }
+
+        impl From<arguments::Named<libipld::Ipld>> for AccountManage {
+            fn from(_: arguments::Named<libipld::Ipld>) -> Self {
+                AccountManage
+            }
+        }
+
+        // named::Named<libipld::Ipld>: From<AccountManage>
+        impl Into<arguments::Named<libipld::Ipld>> for AccountManage {
+            fn into(self) -> arguments::Named<libipld::Ipld> {
+                arguments::Named::new()
+            }
+        }
+
+        impl From<arguments::Named<ipld::Promised>> for AccountManage {
+            fn from(_: arguments::Named<ipld::Promised>) -> Self {
+                AccountManage
+            }
+        }
+
+        impl From<AccountManage> for arguments::Named<ipld::Promised> {
+            fn from(_: AccountManage) -> Self {
+                arguments::Named::new()
             }
         }
 
@@ -403,12 +430,10 @@ mod tests {
                 .subject(account.clone())
                 .issuer(device.clone())
                 .audience(Some(server.clone()))
-                .ability(AccountInfo {})
+                .ability(AccountManage)
                 .proofs(vec![]) // FIXME
-                .build()
-                .expect("FIXME"),
-        )
-        .expect("FIXME");
+                .build()?,
+        )?;
 
         // FIXME reenable
         // let dnslink_invocation = crate::Invocation::try_sign(
@@ -450,21 +475,31 @@ mod tests {
         dbg!(account.to_string().clone());
         dbg!(dnslink.to_string().clone());
 
-        let chain_for_powerline =
-            store.get_chain(&device, &None, "/".into(), vec![], SystemTime::now());
+        let chain_for_powerline = store
+            .get_chain(&device, &None, "/".into(), vec![], SystemTime::now())?
+            .expect("to find a valid powerline chain");
 
-        let chain_for_dnslink = store.get_chain(
-            &device,
-            &Some(dnslink),
-            "/".into(),
-            vec![],
-            SystemTime::now(),
+        let chain_for_dnslink = store
+            .get_chain(
+                &device,
+                &Some(dnslink),
+                "/".into(),
+                vec![],
+                SystemTime::now(),
+            )?
+            .expect("to find a valid dnslink chain");
+
+        assert_eq!((chain_for_powerline.len(), chain_for_dnslink.len()), (3, 3));
+
+        let mut server_agent = Agent::<AccountManage, _, _, _, _, _, _>::new(
+            &server,
+            &server_signer,
+            &mut crate::invocation::store::MemoryStore::default(),
+            &mut store,
+            &mut crate::invocation::promise::store::MemoryStore::default(),
         );
 
-        let powerline_len = chain_for_powerline.expect("FIXME").unwrap().len();
-        let dnslink_len = chain_for_dnslink.expect("FIXME").unwrap().len();
-
-        assert_eq!((powerline_len, dnslink_len), (3, 3)); // FIXME
+        server_agent.receive(account_invocation, &SystemTime::now());
 
         Ok(())
     }

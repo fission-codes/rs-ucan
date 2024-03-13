@@ -29,6 +29,16 @@ pub struct MemoryStore<T, DID: Did, V: varsig::Header<Enc>, Enc: Codec + Into<u6
     store: BTreeMap<Cid, Invocation<T, DID, V, Enc>>,
 }
 
+impl<T, DID: Did, V: varsig::Header<Enc>, Enc: Codec + Into<u64> + TryFrom<u64>> Default
+    for MemoryStore<T, DID, V, Enc>
+{
+    fn default() -> Self {
+        Self {
+            store: Default::default(),
+        }
+    }
+}
+
 impl<T, DID: Did, V: varsig::Header<Enc>, Enc: Codec + Into<u64> + TryFrom<u64>>
     Store<T, DID, V, Enc> for MemoryStore<T, DID, V, Enc>
 {

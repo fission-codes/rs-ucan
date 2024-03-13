@@ -23,7 +23,7 @@ impl From<Verifier> for DID {
     }
 }
 
-#[derive(Debug, Clone, EnumAsInner, PartialEq, Eq)]
+#[derive(Debug, Clone, EnumAsInner)]
 pub enum Signer {
     Key(key::Signer),
     // FIXME Dns(did_url::DID),
