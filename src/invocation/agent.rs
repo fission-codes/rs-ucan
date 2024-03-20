@@ -635,7 +635,7 @@ mod tests {
             );
 
             let inv_store = crate::invocation::store::MemoryStore::default();
-            let mut del_store = crate::delegation::store::MemoryStore::default();
+            let del_store = crate::delegation::store::MemoryStore::default();
 
             // Scenario
             // ========
@@ -750,17 +750,17 @@ mod tests {
 
         #[test_log::test]
         fn test_chain_ok() -> TestResult {
-            let mut ctx = setup_test_chain()?;
+            let ctx = setup_test_chain()?;
 
             let mut agent: Agent<
                 '_,
-                &mut crate::invocation::store::MemoryStore<AccountManage>,
+                &crate::invocation::store::MemoryStore<AccountManage>,
                 &crate::delegation::store::MemoryStore,
                 AccountManage,
             > = Agent::new(
                 &ctx.server,
                 &ctx.server_signer,
-                &mut ctx.inv_store,
+                &ctx.inv_store,
                 &ctx.del_store,
             );
 
@@ -771,17 +771,17 @@ mod tests {
 
         #[test_log::test]
         fn test_chain_wrong_sub() -> TestResult {
-            let mut ctx = setup_test_chain()?;
+            let ctx = setup_test_chain()?;
 
             let mut agent: Agent<
                 '_,
-                &mut crate::invocation::store::MemoryStore<AccountManage>,
+                &crate::invocation::store::MemoryStore<AccountManage>,
                 &crate::delegation::store::MemoryStore,
                 AccountManage,
             > = Agent::new(
                 &ctx.server,
                 &ctx.server_signer,
-                &mut ctx.inv_store,
+                &ctx.inv_store,
                 &ctx.del_store,
             );
 
