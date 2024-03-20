@@ -34,7 +34,6 @@ use web_time::SystemTime;
 
 #[derive(Debug)]
 pub struct Agent<
-    'a,
     S: Store<T, DID, V, C>,
     D: delegation::store::Store<DID, V, C>,
     T: ToCommand = ability::preset::Preset,
@@ -43,7 +42,7 @@ pub struct Agent<
     C: Codec + Into<u64> + TryFrom<u64> = varsig::encoding::Preset,
 > {
     /// The agent's [`DID`].
-    pub did: &'a DID,
+    pub did: DID,
 
     /// A [`delegation::Store`][delegation::store::Store].
     pub delegation_store: D,
@@ -51,11 +50,11 @@ pub struct Agent<
     /// A [`Store`][Store] for the agent's [`Invocation`]s.
     pub invocation_store: S,
 
-    signer: &'a <DID as Did>::Signer,
+    signer: <DID as Did>::Signer,
     marker: PhantomData<(T, V, C)>,
 }
 
-impl<'a, T, DID, S, D, V, C> Agent<'a, S, D, T, DID, V, C>
+impl<T, DID, S, D, V, C> Agent<S, D, T, DID, V, C>
 where
     Ipld: Encode<C>,
     T: ToCommand + Clone + ParseAbility,
@@ -71,8 +70,8 @@ where
     <D as delegation::store::Store<DID, V, C>>::DelegationStoreError: fmt::Debug,
 {
     pub fn new(
-        did: &'a DID,
-        signer: &'a <DID as Did>::Signer,
+        did: DID,
+        signer: <DID as Did>::Signer,
         invocation_store: S,
         delegation_store: D,
     ) -> Self {
@@ -225,7 +224,7 @@ where
             .check(proof_payloads, now)
             .map_err(ReceiveError::ValidationError)?;
 
-        Ok(if invocation.normalized_audience() != self.did {
+        Ok(if invocation.normalized_audience() != &self.did {
             Recipient::Other(invocation.payload)
         } else {
             Recipient::You(invocation.payload)
@@ -408,11 +407,9 @@ mod tests {
         (verifier, signer)
     }
 
-    fn setup_agent<'a>(
-        did: &'a crate::did::preset::Verifier,
-        signer: &'a crate::did::preset::Signer,
-    ) -> Agent<'a, crate::invocation::store::MemoryStore, crate::delegation::store::MemoryStore>
-    {
+    fn setup_agent(
+    ) -> Agent<crate::invocation::store::MemoryStore, crate::delegation::store::MemoryStore> {
+        let (did, signer) = gen_did();
         let inv_store = crate::invocation::store::MemoryStore::default();
         let del_store = crate::delegation::store::MemoryStore::default();
 
@@ -438,8 +435,7 @@ mod tests {
         #[test_log::test]
         fn test_invoker_is_sub_implicit_aud() -> TestResult {
             let (_nbf, now, exp) = setup_valid_time();
-            let (server, server_signer) = gen_did();
-            let mut agent = setup_agent(&server, &server_signer);
+            let mut agent = setup_agent();
 
             let invocation = agent.invoke(
                 None,
@@ -467,8 +463,7 @@ mod tests {
         #[test_log::test]
         fn test_invoker_is_sub_and_aud() -> TestResult {
             let (_nbf, now, exp) = setup_valid_time();
-            let (server, server_signer) = gen_did();
-            let mut agent = setup_agent(&server, &server_signer);
+            let mut agent = setup_agent();
 
             let invocation = agent.invoke(
                 Some(agent.did.clone()),
@@ -497,8 +492,7 @@ mod tests {
         #[test_log::test]
         fn test_other_recipient() -> TestResult {
             let (_nbf, now, exp) = setup_valid_time();
-            let (server, server_signer) = gen_did();
-            let mut agent = setup_agent(&server, &server_signer);
+            let mut agent = setup_agent();
 
             let (not_server, _) = gen_did();
 
@@ -528,8 +522,7 @@ mod tests {
         #[test_log::test]
         fn test_expired() -> TestResult {
             let (past, now, _exp) = setup_valid_time();
-            let (server, server_signer) = gen_did();
-            let mut agent = setup_agent(&server, &server_signer);
+            let mut agent = setup_agent();
 
             let invocation = agent.invoke(
                 None,
@@ -564,8 +557,8 @@ mod tests {
         #[test_log::test]
         fn test_invalid_sig() -> TestResult {
             let (_past, now, _exp) = setup_valid_time();
-            let (server, server_signer) = gen_did();
-            let mut agent = setup_agent(&server, &server_signer);
+            let mut agent = setup_agent();
+            let server = &agent.did;
 
             let mut invocation = agent.invoke(
                 None,
@@ -752,14 +745,9 @@ mod tests {
         fn test_chain_ok() -> TestResult {
             let ctx = setup_test_chain()?;
 
-            let mut agent: Agent<
-                '_,
-                &crate::invocation::store::MemoryStore<AccountManage>,
-                &crate::delegation::store::MemoryStore,
-                AccountManage,
-            > = Agent::new(
-                &ctx.server,
-                &ctx.server_signer,
+            let mut agent = Agent::new(
+                ctx.server.clone(),
+                ctx.server_signer.clone(),
                 &ctx.inv_store,
                 &ctx.del_store,
             );
@@ -773,14 +761,9 @@ mod tests {
         fn test_chain_wrong_sub() -> TestResult {
             let ctx = setup_test_chain()?;
 
-            let mut agent: Agent<
-                '_,
-                &crate::invocation::store::MemoryStore<AccountManage>,
-                &crate::delegation::store::MemoryStore,
-                AccountManage,
-            > = Agent::new(
-                &ctx.server,
-                &ctx.server_signer,
+            let mut agent = Agent::new(
+                ctx.server.clone(),
+                ctx.server_signer.clone(),
                 &ctx.inv_store,
                 &ctx.del_store,
             );
