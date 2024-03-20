@@ -93,14 +93,12 @@ where
             }
         }
 
-        let to_delegate = &self
+        let proofs = &self
             .store
             .get_chain(&self.did, &subject, "/".into(), vec![], now)
             .map_err(DelegateError::StoreError)?
-            .ok_or(DelegateError::ProofsNotFound)?
-            .first()
-            .1
-            .payload();
+            .ok_or(DelegateError::ProofsNotFound)?;
+        let to_delegate = proofs.first().1.payload();
 
         let mut policy = to_delegate.policy.clone();
         policy.append(&mut new_policy.clone());

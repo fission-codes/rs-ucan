@@ -27,6 +27,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     fmt,
     marker::PhantomData,
+    sync::Arc,
 };
 use thiserror::Error;
 use web_time::SystemTime;
@@ -204,13 +205,19 @@ where
             .put(cid.clone(), invocation.clone())
             .map_err(ReceiveError::InvocationStoreError)?;
 
-        let proof_payloads: Vec<&delegation::Payload<DID>> = self
+        let proofs = &self
             .delegation_store
             .get_many(&invocation.proofs())
-            .map_err(ReceiveError::DelegationStoreError)?
+            .map_err(ReceiveError::DelegationStoreError)?;
+        let proof_payloads: Vec<&delegation::Payload<DID>> = proofs
             .iter()
             .zip(invocation.proofs().iter())
-            .map(|(d, cid)| Ok(&d.ok_or(ReceiveError::MissingDelegation(*cid))?.payload))
+            .map(|(d, cid)| {
+                Ok(&d
+                    .as_ref()
+                    .ok_or(ReceiveError::MissingDelegation(*cid))?
+                    .payload)
+            })
             .collect::<Result<_, ReceiveError<T, DID, D::DelegationStoreError, S, V, C>>>()?;
 
         let _ = &invocation
@@ -748,13 +755,13 @@ mod tests {
             let mut agent: Agent<
                 '_,
                 &mut crate::invocation::store::MemoryStore<AccountManage>,
-                &mut crate::delegation::store::MemoryStore,
+                &crate::delegation::store::MemoryStore,
                 AccountManage,
             > = Agent::new(
                 &ctx.server,
                 &ctx.server_signer,
                 &mut ctx.inv_store,
-                &mut ctx.del_store,
+                &ctx.del_store,
             );
 
             let observed = agent.receive(ctx.account_invocation.clone());
@@ -769,13 +776,13 @@ mod tests {
             let mut agent: Agent<
                 '_,
                 &mut crate::invocation::store::MemoryStore<AccountManage>,
-                &mut crate::delegation::store::MemoryStore,
+                &crate::delegation::store::MemoryStore,
                 AccountManage,
             > = Agent::new(
                 &ctx.server,
                 &ctx.server_signer,
                 &mut ctx.inv_store,
-                &mut ctx.del_store,
+                &ctx.del_store,
             );
 
             let not_account_invocation = crate::Invocation::try_sign(
