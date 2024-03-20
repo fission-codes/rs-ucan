@@ -1,5 +1,6 @@
 use super::{payload::Payload, policy::Predicate, store::Store, Delegation};
 use crate::ability::arguments::Named;
+use crate::did;
 use crate::{
     crypto::{signature::Envelope, varsig, Nonce},
     did::Did,
@@ -19,10 +20,10 @@ use web_time::SystemTime;
 /// This is helpful for sessions where more than one delegation will be made.
 #[derive(Debug)]
 pub struct Agent<
-    DID: Did,
     S: Store<DID, V, Enc>,
-    V: varsig::Header<Enc>,
-    Enc: Codec + TryFrom<u64> + Into<u64>,
+    DID: Did = did::preset::Verifier,
+    V: varsig::Header<Enc> + Clone = varsig::header::Preset,
+    Enc: Codec + Into<u64> + TryFrom<u64> = varsig::encoding::Preset,
 > {
     /// The [`Did`][Did] of the agent.
     pub did: DID,
@@ -35,11 +36,11 @@ pub struct Agent<
 }
 
 impl<
-        DID: Did + Clone,
         S: Store<DID, V, Enc> + Clone,
+        DID: Did + Clone,
         V: varsig::Header<Enc> + Clone,
         Enc: Codec + TryFrom<u64> + Into<u64>,
-    > Agent<DID, S, V, Enc>
+    > Agent<S, DID, V, Enc>
 where
     Ipld: Encode<Enc>,
     Payload<DID>: TryFrom<Named<Ipld>>,
