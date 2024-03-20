@@ -86,7 +86,7 @@ where
     }
 
     pub fn invoke(
-        &mut self,
+        &self,
         audience: Option<DID>,
         subject: DID,
         ability: T,
@@ -172,7 +172,7 @@ where
     // }
 
     pub fn receive(
-        &mut self,
+        &self,
         invocation: Invocation<T, DID, V, C>,
     ) -> Result<Recipient<Payload<T, DID>>, ReceiveError<T, DID, D::DelegationStoreError, S, V, C>>
     where
@@ -184,7 +184,7 @@ where
     }
 
     pub fn generic_receive(
-        &mut self,
+        &self,
         invocation: Invocation<T, DID, V, C>,
         now: SystemTime,
     ) -> Result<Recipient<Payload<T, DID>>, ReceiveError<T, DID, D::DelegationStoreError, S, V, C>>
@@ -233,7 +233,7 @@ where
     }
 
     // pub fn revoke(
-    //     &mut self,
+    //     &self,
     //     subject: DID,
     //     cause: Option<Cid>,
     //     cid: Cid,

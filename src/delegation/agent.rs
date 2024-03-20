@@ -29,7 +29,7 @@ pub struct Agent<
     pub did: &'a DID,
 
     /// The attached [`deleagtion::Store`][super::store::Store].
-    pub store: &'a mut S,
+    pub store: S,
 
     signer: &'a <DID as Did>::Signer,
     _marker: PhantomData<(V, Enc)>,
@@ -47,7 +47,7 @@ where
     Payload<DID>: TryFrom<Named<Ipld>>,
     Named<Ipld>: From<Payload<DID>>,
 {
-    pub fn new(did: &'a DID, signer: &'a <DID as Did>::Signer, store: &'a mut S) -> Self {
+    pub fn new(did: &'a DID, signer: &'a <DID as Did>::Signer, store: S) -> Self {
         Self {
             did,
             store,
@@ -120,7 +120,7 @@ where
     }
 
     pub fn receive(
-        &mut self,
+        &self,
         cid: Cid, // FIXME remove and generate from the capsule header?
         delegation: Delegation<DID, V, Enc>,
     ) -> Result<(), ReceiveError<S::DelegationStoreError, DID>> {
