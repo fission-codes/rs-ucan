@@ -10,7 +10,10 @@ use libipld_core::codec::Encode;
 use libipld_core::ipld::Ipld;
 use libipld_core::{cid::Cid, codec::Codec};
 use nonempty::NonEmpty;
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    convert::Infallible,
+};
 use web_time::SystemTime;
 
 #[cfg_attr(doc, aquamarine::aquamarine)]
@@ -117,12 +120,13 @@ where
     delegation::Payload<DID>: TryFrom<Named<Ipld>>,
     Delegation<DID, V, Enc>: Encode<Enc>,
 {
-    type DelegationStoreError = String; // FIXME misisng
+    type DelegationStoreError = Infallible;
 
-    fn get(&self, cid: &Cid) -> Result<&Delegation<DID, V, Enc>, Self::DelegationStoreError> {
-        self.ucans
-            .get(cid)
-            .ok_or(format!("not found in delegation memstore: {:?}", cid).into())
+    fn get(
+        &self,
+        cid: &Cid,
+    ) -> Result<Option<&Delegation<DID, V, Enc>>, Self::DelegationStoreError> {
+        Ok(self.ucans.get(cid))
         // FIXME
     }
 

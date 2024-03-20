@@ -14,7 +14,7 @@ use std::{collections::BTreeMap, marker::PhantomData};
 use thiserror::Error;
 use web_time::SystemTime;
 
-/// A stateful agent capable of delegatint to others, and being delegated to.
+/// A stateful agent capable of delegating to others, and being delegated to.
 ///
 /// This is helpful for sessions where more than one delegation will be made.
 #[derive(Debug)]

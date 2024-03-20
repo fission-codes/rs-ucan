@@ -11,7 +11,10 @@ use web_time::SystemTime;
 pub trait Store<DID: Did, V: varsig::Header<Enc>, Enc: Codec + TryFrom<u64> + Into<u64>> {
     type DelegationStoreError: Debug;
 
-    fn get(&self, cid: &Cid) -> Result<&Delegation<DID, V, Enc>, Self::DelegationStoreError>;
+    fn get(
+        &self,
+        cid: &Cid,
+    ) -> Result<Option<&Delegation<DID, V, Enc>>, Self::DelegationStoreError>;
 
     fn insert(
         &mut self,
@@ -60,7 +63,7 @@ pub trait Store<DID: Did, V: varsig::Header<Enc>, Enc: Codec + TryFrom<u64> + In
     fn get_many(
         &self,
         cids: &[Cid],
-    ) -> Result<Vec<&Delegation<DID, V, Enc>>, Self::DelegationStoreError> {
+    ) -> Result<Vec<Option<&Delegation<DID, V, Enc>>>, Self::DelegationStoreError> {
         cids.iter().try_fold(vec![], |mut acc, cid| {
             acc.push(self.get(cid)?);
             Ok(acc)
@@ -73,7 +76,7 @@ impl<T: Store<DID, V, C>, DID: Did, V: varsig::Header<C>, C: Codec + TryFrom<u64
 {
     type DelegationStoreError = <T as Store<DID, V, C>>::DelegationStoreError;
 
-    fn get(&self, cid: &Cid) -> Result<&Delegation<DID, V, C>, Self::DelegationStoreError> {
+    fn get(&self, cid: &Cid) -> Result<Option<&Delegation<DID, V, C>>, Self::DelegationStoreError> {
         (**self).get(cid)
     }
 
