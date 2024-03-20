@@ -1,5 +1,6 @@
 use super::{payload::Payload, policy::Predicate, store::Store, Delegation};
 use crate::ability::arguments::Named;
+use crate::did;
 use crate::{
     crypto::{signature::Envelope, varsig, Nonce},
     did::Did,
@@ -19,35 +20,33 @@ use web_time::SystemTime;
 /// This is helpful for sessions where more than one delegation will be made.
 #[derive(Debug)]
 pub struct Agent<
-    'a,
-    DID: Did,
     S: Store<DID, V, Enc>,
-    V: varsig::Header<Enc>,
-    Enc: Codec + TryFrom<u64> + Into<u64>,
+    DID: Did = did::preset::Verifier,
+    V: varsig::Header<Enc> + Clone = varsig::header::Preset,
+    Enc: Codec + Into<u64> + TryFrom<u64> = varsig::encoding::Preset,
 > {
     /// The [`Did`][Did] of the agent.
-    pub did: &'a DID,
+    pub did: DID,
 
     /// The attached [`deleagtion::Store`][super::store::Store].
     pub store: S,
 
-    signer: &'a <DID as Did>::Signer,
+    signer: <DID as Did>::Signer,
     _marker: PhantomData<(V, Enc)>,
 }
 
 impl<
-        'a,
-        DID: Did + Clone,
         S: Store<DID, V, Enc> + Clone,
+        DID: Did + Clone,
         V: varsig::Header<Enc> + Clone,
         Enc: Codec + TryFrom<u64> + Into<u64>,
-    > Agent<'a, DID, S, V, Enc>
+    > Agent<S, DID, V, Enc>
 where
     Ipld: Encode<Enc>,
     Payload<DID>: TryFrom<Named<Ipld>>,
     Named<Ipld>: From<Payload<DID>>,
 {
-    pub fn new(did: &'a DID, signer: &'a <DID as Did>::Signer, store: S) -> Self {
+    pub fn new(did: DID, signer: <DID as Did>::Signer, store: S) -> Self {
         Self {
             did,
             store,
@@ -73,7 +72,7 @@ where
         let nonce = Nonce::generate_12(&mut salt);
 
         if let Some(ref sub) = subject {
-            if sub == self.did {
+            if sub == &self.did {
                 let payload: Payload<DID> = Payload {
                     issuer: self.did.clone(),
                     audience,
@@ -88,7 +87,7 @@ where
                 };
 
                 return Ok(
-                    Delegation::try_sign(self.signer, varsig_header, payload).expect("FIXME")
+                    Delegation::try_sign(&self.signer, varsig_header, payload).expect("FIXME")
                 );
             }
         }
@@ -116,7 +115,7 @@ where
             not_before: not_before.map(Into::into),
         };
 
-        Ok(Delegation::try_sign(self.signer, varsig_header, payload).expect("FIXME"))
+        Ok(Delegation::try_sign(&self.signer, varsig_header, payload).expect("FIXME"))
     }
 
     pub fn receive(
@@ -128,7 +127,7 @@ where
             return Ok(());
         }
 
-        if delegation.audience() != self.did {
+        if delegation.audience() != &self.did {
             return Err(ReceiveError::WrongAudience(delegation.audience().clone()));
         }
 
