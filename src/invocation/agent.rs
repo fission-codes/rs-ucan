@@ -3,19 +3,21 @@ use super::{
     store::Store,
     Invocation,
 };
-use crate::ability::arguments::Named;
-use crate::ability::command::ToCommand;
-use crate::ability::parse::ParseAbility;
-use crate::delegation::Delegation;
-use crate::invocation::payload::PayloadBuilder;
 use crate::{
-    ability::{self, arguments, parse::ParseAbilityError, ucan::revoke::Revoke},
+    ability::{
+        self, arguments,
+        arguments::Named,
+        command::ToCommand,
+        parse::{ParseAbility, ParseAbilityError},
+        ucan::revoke::Revoke,
+    },
     crypto::{
         signature::{self, Envelope},
         varsig, Nonce,
     },
     delegation,
     did::{self, Did},
+    invocation::payload::PayloadBuilder,
     time::Timestamp,
 };
 use enum_as_inner::EnumAsInner;
@@ -102,16 +104,15 @@ where
             vec![]
         } else {
             self.delegation_store
-                .get_chain(
+                .get_chain_cids(
                     &self.did,
                     &subject.clone(),
                     ability.to_command(),
                     vec![],
                     now,
-                )
-                .map_err(InvokeError::DelegationStoreError)?
-                .map(|chain| chain.map(|(cid, _)| cid).into())
-                .unwrap_or(vec![]) // FIXME
+                )?
+                .ok_or(InvokeError::ProofsNotFound)?
+                .into()
         };
 
         let payload = Payload {
@@ -328,7 +329,10 @@ pub enum ReceiveError<
 #[derive(Debug, Error)]
 pub enum InvokeError<D> {
     #[error("delegation store error: {0}")]
-    DelegationStoreError(#[source] D),
+    DelegationStoreError(#[from] D),
+
+    #[error("The current agent does not have the necessary proofs to invoke.")]
+    ProofsNotFound,
 
     #[error("store error: {0}")]
     SignError(#[source] signature::SignError),
@@ -337,23 +341,28 @@ pub enum InvokeError<D> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ability::crud::read::Read;
-    use crate::crypto::varsig;
-    use crate::crypto::varsig::encoding;
-    use crate::crypto::varsig::header;
-    use crate::invocation::{payload::ValidationError, Agent};
     use crate::{
-        ability::{arguments::Named, command::Command},
-        crypto::signature::Envelope,
+        ability::{arguments::Named, command::Command, crud::read::Read},
+        crypto::{
+            signature::Envelope,
+            varsig,
+            varsig::{encoding, header},
+        },
         delegation::store::Store,
-        invocation::promise::{CantResolve, Resolvable},
+        invocation::{
+            payload::ValidationError,
+            promise::{CantResolve, Resolvable},
+            Agent,
+        },
         ipld,
     };
     use libipld_core::{cid::Cid, ipld::Ipld};
     use pretty_assertions as pretty;
     use rand::thread_rng;
-    use std::ops::{Add, Sub};
-    use std::time::{Duration, SystemTime};
+    use std::{
+        ops::{Add, Sub},
+        time::{Duration, SystemTime},
+    };
     use testresult::TestResult;
 
     #[derive(Debug, Clone, PartialEq)]
