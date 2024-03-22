@@ -1,8 +1,8 @@
 use super::{payload::Payload, policy::Predicate, store::Store, Delegation};
-use crate::ability::arguments::Named;
-use crate::did;
 use crate::{
+    ability::arguments::Named,
     crypto::{signature::Envelope, varsig, Nonce},
+    did,
     did::Did,
     time::Timestamp,
 };
@@ -94,7 +94,7 @@ where
 
         let proofs = &self
             .store
-            .get_chain(&self.did, &subject, "/".into(), vec![], now)
+            .get_chain(&self.did, &subject, command.clone(), vec![], now)
             .map_err(DelegateError::StoreError)?
             .ok_or(DelegateError::ProofsNotFound)?;
         let to_delegate = proofs.first().1.payload();
