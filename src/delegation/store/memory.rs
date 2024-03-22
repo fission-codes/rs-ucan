@@ -10,6 +10,7 @@ use libipld_core::codec::Encode;
 use libipld_core::ipld::Ipld;
 use libipld_core::{cid::Cid, codec::Codec};
 use nonempty::NonEmpty;
+use std::borrow::Cow;
 use std::{
     collections::{BTreeMap, BTreeSet},
     convert::Infallible,
@@ -191,8 +192,8 @@ where
         &self,
         aud: &DID,
         subject: &DID,
-        command: String,
-        policy: Vec<Predicate>,
+        command: &str,
+        policy: Vec<Predicate>, // FIXME
         now: SystemTime,
     ) -> Result<Option<NonEmpty<(Cid, Arc<Delegation<DID, V, Enc>>)>>, Self::DelegationStoreError>
     {
@@ -210,9 +211,9 @@ where
         let mut hypothesis_chain = vec![];
 
         let corrected_target_command = if command.ends_with('/') {
-            command
+            Cow::Borrowed(command)
         } else {
-            format!("{}/", command)
+            Cow::Owned(format!("{command}/"))
         };
 
         'outer: loop {

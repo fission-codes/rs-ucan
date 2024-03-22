@@ -94,7 +94,7 @@ where
 
         let proofs = &self
             .store
-            .get_chain(&self.did, &subject, command.clone(), vec![], now)
+            .get_chain(&self.did, &subject, &command, vec![], now)
             .map_err(DelegateError::StoreError)?
             .ok_or(DelegateError::ProofsNotFound)?;
         let to_delegate = proofs.first().1.payload();

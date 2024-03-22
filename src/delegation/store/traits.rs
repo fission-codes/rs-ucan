@@ -50,7 +50,7 @@ where
         &self,
         audience: &DID,
         subject: &DID,
-        command: String,
+        command: &str,
         policy: Vec<Predicate>,
         now: SystemTime,
     ) -> Result<Option<NonEmpty<(Cid, Arc<Delegation<DID, V, C>>)>>, Self::DelegationStoreError>;
@@ -59,7 +59,7 @@ where
         &self,
         audience: &DID,
         subject: &DID,
-        command: String,
+        command: &str,
         policy: Vec<Predicate>,
         now: SystemTime,
     ) -> Result<Option<NonEmpty<Cid>>, Self::DelegationStoreError> {
@@ -71,7 +71,7 @@ where
         &self,
         issuer: DID,
         audience: &DID,
-        command: String,
+        command: &str,
         policy: Vec<Predicate>,
         now: SystemTime,
     ) -> Result<bool, Self::DelegationStoreError> {
@@ -125,7 +125,7 @@ where
         &self,
         audience: &DID,
         subject: &DID,
-        command: String,
+        command: &str,
         policy: Vec<Predicate>,
         now: SystemTime,
     ) -> Result<Option<NonEmpty<(Cid, Arc<Delegation<DID, V, C>>)>>, Self::DelegationStoreError>

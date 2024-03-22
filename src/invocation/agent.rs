@@ -104,7 +104,7 @@ where
             vec![]
         } else {
             self.delegation_store
-                .get_chain_cids(&self.did, &subject, ability.to_command(), vec![], now)? // FIXME policy
+                .get_chain_cids(&self.did, &subject, &ability.to_command(), vec![], now)? // FIXME policy
                 .ok_or(InvokeError::ProofsNotFound)?
                 .into()
         };
