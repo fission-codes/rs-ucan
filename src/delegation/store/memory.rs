@@ -10,10 +10,10 @@ use libipld_core::codec::Encode;
 use libipld_core::ipld::Ipld;
 use libipld_core::{cid::Cid, codec::Codec};
 use nonempty::NonEmpty;
-use std::sync::{Arc, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::{
     collections::{BTreeMap, BTreeSet},
     convert::Infallible,
+    sync::{Arc, Mutex, MutexGuard},
 };
 use web_time::SystemTime;
 
@@ -79,7 +79,7 @@ pub struct MemoryStore<
     V: varsig::Header<C> = varsig::header::Preset,
     C: Codec + TryFrom<u64> + Into<u64> = varsig::encoding::Preset,
 > {
-    inner: Arc<RwLock<MemoryStoreInner<DID, V, C>>>,
+    inner: Arc<Mutex<MemoryStoreInner<DID, V, C>>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -101,25 +101,15 @@ impl<DID: did::Did + Ord, V: varsig::Header<C>, C: Codec + TryFrom<u64> + Into<u
     }
 
     pub fn len(&self) -> usize {
-        self.read().ucans.len()
+        self.lock().ucans.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.read().ucans.is_empty() // FIXME account for revocations?
+        self.lock().ucans.is_empty() // FIXME account for revocations?
     }
 
-    fn read(&self) -> RwLockReadGuard<'_, MemoryStoreInner<DID, V, C>> {
-        match self.inner.read() {
-            Ok(guard) => guard,
-            Err(poison) => {
-                // We ignore lock poisoning for simplicity
-                poison.into_inner()
-            }
-        }
-    }
-
-    fn write(&self) -> RwLockWriteGuard<'_, MemoryStoreInner<DID, V, C>> {
-        match self.inner.write() {
+    fn lock(&self) -> MutexGuard<'_, MemoryStoreInner<DID, V, C>> {
+        match self.inner.lock() {
             Ok(guard) => guard,
             Err(poison) => {
                 // We ignore lock poisoning for simplicity
@@ -169,7 +159,7 @@ where
         cid: &Cid,
     ) -> Result<Option<Arc<Delegation<DID, V, Enc>>>, Self::DelegationStoreError> {
         // cheap Arc clone
-        Ok(self.read().ucans.get(cid).cloned())
+        Ok(self.lock().ucans.get(cid).cloned())
         // FIXME
     }
 
@@ -178,23 +168,22 @@ where
         cid: Cid,
         delegation: Delegation<DID, V, Enc>,
     ) -> Result<(), Self::DelegationStoreError> {
-        let mut write_tx = self.write();
+        let mut tx = self.lock();
 
-        write_tx
-            .index
+        tx.index
             .entry(delegation.subject().clone())
             .or_default()
             .entry(delegation.audience().clone())
             .or_default()
             .insert(cid);
 
-        write_tx.ucans.insert(cid.clone(), Arc::new(delegation));
+        tx.ucans.insert(cid.clone(), Arc::new(delegation));
 
         Ok(())
     }
 
     fn revoke(&self, cid: Cid) -> Result<(), Self::DelegationStoreError> {
-        self.write().revocations.insert(cid);
+        self.lock().revocations.insert(cid);
         Ok(())
     }
 
@@ -209,13 +198,10 @@ where
     {
         let blank_set = BTreeSet::new();
         let blank_map = BTreeMap::new();
-        let read_tx = self.read();
+        let tx = self.lock();
 
-        let all_powerlines = read_tx.index.get(&None).unwrap_or(&blank_map);
-        let all_aud_for_subject = read_tx
-            .index
-            .get(&Some(subject.clone()))
-            .unwrap_or(&blank_map);
+        let all_powerlines = tx.index.get(&None).unwrap_or(&blank_map);
+        let all_aud_for_subject = tx.index.get(&Some(subject.clone())).unwrap_or(&blank_map);
         let powerline_candidates = all_powerlines.get(aud).unwrap_or(&blank_set);
         let sub_candidates = all_aud_for_subject.get(aud).unwrap_or(&blank_set);
 
@@ -238,11 +224,11 @@ where
 
                 'inner: for cid in parent_cid_candidates {
                     // CHECKS
-                    if read_tx.revocations.contains(cid) {
+                    if tx.revocations.contains(cid) {
                         continue;
                     }
 
-                    if let Some(delegation) = read_tx.ucans.get(cid) {
+                    if let Some(delegation) = tx.ucans.get(cid) {
                         if delegation.check_time(now).is_err() {
                             continue;
                         }

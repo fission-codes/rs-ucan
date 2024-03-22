@@ -1,7 +1,7 @@
-use crate::{crypto::varsig, did::Did, invocation::Invocation};
 use super::Store;
+use crate::{crypto::varsig, did::Did, invocation::Invocation};
 use libipld_core::{cid::Cid, codec::Codec};
-use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::{collections::BTreeMap, convert::Infallible};
 
 #[derive(Debug, Clone)]
@@ -11,7 +11,7 @@ pub struct MemoryStore<
     V: varsig::Header<C> = varsig::header::Preset,
     C: Codec + TryFrom<u64> + Into<u64> = varsig::encoding::Preset,
 > {
-    inner: Arc<RwLock<MemoryStoreInner<T, DID, V, C>>>,
+    inner: Arc<Mutex<MemoryStoreInner<T, DID, V, C>>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -27,18 +27,8 @@ pub struct MemoryStoreInner<
 impl<T, DID: Did, V: varsig::Header<Enc>, Enc: Codec + Into<u64> + TryFrom<u64>>
     MemoryStore<T, DID, V, Enc>
 {
-    fn read(&self) -> RwLockReadGuard<'_, MemoryStoreInner<T, DID, V, Enc>> {
-        match self.inner.read() {
-            Ok(guard) => guard,
-            Err(poison) => {
-                // There's no logic errors through lock poisoning in our case
-                poison.into_inner()
-            }
-        }
-    }
-
-    fn write(&self) -> RwLockWriteGuard<'_, MemoryStoreInner<T, DID, V, Enc>> {
-        match self.inner.write() {
+    fn lock(&self) -> MutexGuard<'_, MemoryStoreInner<T, DID, V, Enc>> {
+        match self.inner.lock() {
             Ok(guard) => guard,
             Err(poison) => {
                 // There's no logic errors through lock poisoning in our case
@@ -53,7 +43,7 @@ impl<T, DID: Did, V: varsig::Header<Enc>, Enc: Codec + Into<u64> + TryFrom<u64>>
 {
     fn default() -> Self {
         Self {
-            inner: Arc::new(RwLock::new(MemoryStoreInner {
+            inner: Arc::new(Mutex::new(MemoryStoreInner {
                 store: BTreeMap::new(),
             })),
         }
@@ -69,7 +59,7 @@ impl<T, DID: Did, V: varsig::Header<Enc>, Enc: Codec + Into<u64> + TryFrom<u64>>
         &self,
         cid: Cid,
     ) -> Result<Option<Arc<Invocation<T, DID, V, Enc>>>, Self::InvocationStoreError> {
-        Ok(self.read().store.get(&cid).cloned())
+        Ok(self.lock().store.get(&cid).cloned())
     }
 
     fn put(
@@ -77,7 +67,7 @@ impl<T, DID: Did, V: varsig::Header<Enc>, Enc: Codec + Into<u64> + TryFrom<u64>>
         cid: Cid,
         invocation: Invocation<T, DID, V, Enc>,
     ) -> Result<(), Self::InvocationStoreError> {
-        self.write().store.insert(cid, Arc::new(invocation));
+        self.lock().store.insert(cid, Arc::new(invocation));
         Ok(())
     }
 }
