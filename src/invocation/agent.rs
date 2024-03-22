@@ -218,7 +218,7 @@ where
             .map(|(d, cid)| {
                 Ok(&d
                     .as_ref()
-                    .ok_or(ReceiveError::MissingDelegation(*cid))?
+                    .ok_or(ReceiveError::DelegationNotFound(*cid))?
                     .payload)
             })
             .collect::<Result<_, ReceiveError<T, DID, D::DelegationStoreError, S, V, C>>>()?;
@@ -301,8 +301,8 @@ pub enum ReceiveError<
 > where
     <S as Store<T, DID, V, C>>::InvocationStoreError: fmt::Debug,
 {
-    #[error("missing delegation: {0}")]
-    MissingDelegation(Cid),
+    #[error("couldn't find delegation: {0}")]
+    DelegationNotFound(Cid),
 
     #[error("encoding error: {0}")]
     EncodingError(#[from] libipld_core::error::Error),
