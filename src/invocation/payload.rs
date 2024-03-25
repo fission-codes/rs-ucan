@@ -1,19 +1,18 @@
 use super::promise::Resolvable;
+use crate::ability::command::Command;
+use crate::ability::parse::ParseAbilityError;
+use crate::delegation::policy::selector;
+use crate::invocation::Named;
+use crate::time;
 use crate::{
-    ability::{
-        arguments,
-        command::{Command, ToCommand},
-        parse::{ParseAbility, ParseAbilityError},
-    },
+    ability::{arguments, command::ToCommand, parse::ParseAbility},
     capsule::Capsule,
     crypto::{varsig, Nonce},
     delegation::{
         self,
-        policy::{selector, selector::SelectorError, Predicate},
+        policy::{selector::SelectorError, Predicate},
     },
     did::{Did, Verifiable},
-    invocation::Named,
-    time,
     time::{Expired, Timestamp},
 };
 use derive_builder::Builder;
@@ -23,11 +22,9 @@ use serde::{
     ser::SerializeStruct,
     Deserialize, Serialize, Serializer,
 };
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    fmt,
-    str::FromStr,
-};
+use std::collections::BTreeSet;
+use std::str::FromStr;
+use std::{collections::BTreeMap, fmt};
 use thiserror::Error;
 use web_time::SystemTime;
 
@@ -178,54 +175,54 @@ impl<A, DID: Did> Payload<A, DID> {
             cmd.push('/');
         }
 
-        let mut current_iss = &self.issuer;
-        let mut vias = BTreeSet::new();
-        for proof in proofs {
-            if *current_iss != proof.audience {
-                return Err(ValidationError::MisalignedIssAud.into());
-            }
-
-            if let Some(proof_subject) = &proof.subject {
-                if self.subject != *proof_subject {
-                    return Err(ValidationError::InvalidSubject.into());
+        let (final_iss, vias) = proofs.into_iter().try_fold(
+            (&self.issuer, BTreeSet::new()),
+            |(iss, mut vias), proof| {
+                if *iss != proof.audience {
+                    return Err(ValidationError::MisalignedIssAud.into());
                 }
-            }
 
-            if proof.expiration < now_ts {
-                return Err(ValidationError::Expired.into());
-            }
-
-            if let Some(nbf) = proof.not_before.clone() {
-                if nbf > now_ts {
-                    return Err(ValidationError::NotYetValid.into());
+                if let Some(proof_subject) = &proof.subject {
+                    if self.subject != *proof_subject {
+                        return Err(ValidationError::InvalidSubject.into());
+                    }
                 }
-            }
 
-            vias.remove(&current_iss);
-            if let Some(via_did) = &proof.via {
-                vias.insert(via_did);
-            }
-
-            if !cmd.starts_with(&proof.command) {
-                return Err(ValidationError::CommandMismatch(proof.command.clone()));
-            }
-
-            let ipld_args = Ipld::from(args.clone());
-
-            for predicate in proof.policy.iter() {
-                if !predicate
-                    .clone()
-                    .run(&ipld_args)
-                    .map_err(ValidationError::SelectorError)?
-                {
-                    return Err(ValidationError::FailedPolicy(predicate.clone()));
+                if proof.expiration < now_ts {
+                    return Err(ValidationError::Expired.into());
                 }
-            }
 
-            current_iss = &proof.issuer;
-        }
+                if let Some(nbf) = proof.not_before.clone() {
+                    if nbf > now_ts {
+                        return Err(ValidationError::NotYetValid.into());
+                    }
+                }
 
-        let final_iss = current_iss;
+                vias.remove(&iss);
+                if let Some(via_did) = &proof.via {
+                    vias.insert(via_did);
+                }
+
+                if !cmd.starts_with(&proof.command) {
+                    return Err(ValidationError::CommandMismatch(proof.command.clone()));
+                }
+
+                let ipld_args = Ipld::from(args.clone());
+
+                for predicate in proof.policy.iter() {
+                    if !predicate
+                        .clone()
+                        .run(&ipld_args)
+                        .map_err(ValidationError::SelectorError)?
+                    {
+                        return Err(ValidationError::FailedPolicy(predicate.clone()));
+                    }
+                }
+
+                Ok((&proof.issuer, vias))
+            },
+        )?;
+
         if self.subject != *final_iss {
             return Err(ValidationError::DidNotTerminateInSubject);
         }
@@ -734,7 +731,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ability::msg::Msg, ipld};
+    use crate::ability::msg::Msg;
+    use crate::ipld;
     use assert_matches::assert_matches;
     use pretty_assertions as pretty;
     use proptest::prelude::*;
