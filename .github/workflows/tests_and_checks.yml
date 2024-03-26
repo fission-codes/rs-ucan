@@ -45,7 +45,7 @@ jobs:
         with:
           args: --all -- --check
           command: fmt
-          toolchain: stable
+          toolchain: unstable
 
       - name: Run Linter
         uses: actions-rs/cargo@v1
