@@ -45,7 +45,7 @@ jobs:
         with:
           args: --all -- --check
           command: fmt
-          toolchain: ${{ matrix.rust-toolchain }}
+          toolchain: stable
 
       - name: Run Linter
         uses: actions-rs/cargo@v1
