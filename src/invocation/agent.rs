@@ -68,8 +68,6 @@ where
     D: delegation::store::Store<DID, V, C>,
     V: varsig::Header<C> + Clone,
     C: Codec,
-    <S as Store<T, DID, V, C>>::InvocationStoreError: fmt::Debug,
-    <D as delegation::store::Store<DID, V, C>>::DelegationStoreError: fmt::Debug,
     delegation::Payload<DID>: TryFrom<Named<Ipld>>,
     Named<Ipld>: From<delegation::Payload<DID>>,
 {
@@ -291,10 +289,7 @@ pub enum Recipient<T> {
 }
 
 #[derive(Debug, Error, EnumAsInner)]
-pub enum ReceiveError<T, DID: Did, D, S: Store<T, DID, V, C>, V: varsig::Header<C>, C: Codec>
-where
-    <S as Store<T, DID, V, C>>::InvocationStoreError: fmt::Debug,
-{
+pub enum ReceiveError<T, DID: Did, D, S: Store<T, DID, V, C>, V: varsig::Header<C>, C: Codec> {
     #[error("couldn't find delegation: {0}")]
     DelegationNotFound(Cid),
 
