@@ -97,7 +97,7 @@ where
         issued_at: Option<Timestamp>,
         now: SystemTime,
         varsig_header: V,
-    ) -> Result<Invocation<T, DID, V, C>, InvokeError<D::DelegationStoreError>> {
+    ) -> Result<Invocation<T, DID, V, C>, InvokeError<D::Error>> {
         let proofs = if subject == self.did {
             vec![]
         } else {
@@ -175,7 +175,7 @@ where
     pub fn receive(
         &self,
         invocation: Invocation<T, DID, V, C>,
-    ) -> Result<Recipient<Payload<T, DID>>, ReceiveError<T, DID, D::DelegationStoreError, S, V, C>>
+    ) -> Result<Recipient<Payload<T, DID>>, ReceiveError<T, DID, D::Error, S, V, C>>
     where
         arguments::Named<Ipld>: From<T>,
         Payload<T, DID>: TryFrom<Named<Ipld>>,
@@ -188,7 +188,7 @@ where
         &self,
         invocation: Invocation<T, DID, V, C>,
         now: SystemTime,
-    ) -> Result<Recipient<Payload<T, DID>>, ReceiveError<T, DID, D::DelegationStoreError, S, V, C>>
+    ) -> Result<Recipient<Payload<T, DID>>, ReceiveError<T, DID, D::Error, S, V, C>>
     where
         arguments::Named<Ipld>: From<T>,
         Payload<T, DID>: TryFrom<Named<Ipld>>,
@@ -219,7 +219,7 @@ where
                     .ok_or(ReceiveError::DelegationNotFound(*cid))?
                     .payload)
             })
-            .collect::<Result<_, ReceiveError<T, DID, D::DelegationStoreError, S, V, C>>>()?;
+            .collect::<Result<_, ReceiveError<T, DID, D::Error, S, V, C>>>()?;
 
         let _ = &invocation
             .payload
@@ -300,7 +300,7 @@ pub enum ReceiveError<T, DID: Did, D, S: Store<T, DID, V, C>, V: varsig::Header<
     SigVerifyError(#[from] signature::ValidateError),
 
     #[error("invocation store error: {0}")]
-    InvocationStoreError(#[source] <S as Store<T, DID, V, C>>::InvocationStoreError),
+    InvocationStoreError(#[source] <S as Store<T, DID, V, C>>::Error),
 
     #[error("delegation store error: {0}")]
     DelegationStoreError(#[source] D),

@@ -144,12 +144,9 @@ where
     delegation::Payload<DID>: TryFrom<Named<Ipld>>,
     Ipld: Encode<Enc>,
 {
-    type DelegationStoreError = Infallible;
+    type Error = Infallible;
 
-    fn get(
-        &self,
-        cid: &Cid,
-    ) -> Result<Option<Arc<Delegation<DID, V, Enc>>>, Self::DelegationStoreError> {
+    fn get(&self, cid: &Cid) -> Result<Option<Arc<Delegation<DID, V, Enc>>>, Self::Error> {
         // cheap Arc clone
         Ok(self.lock().ucans.get(cid).cloned())
         // FIXME
@@ -159,7 +156,7 @@ where
         &self,
         cid: Cid,
         delegation: Delegation<DID, V, Enc>,
-    ) -> Result<(), Self::DelegationStoreError> {
+    ) -> Result<(), Self::Error> {
         let mut tx = self.lock();
 
         tx.index
@@ -174,7 +171,7 @@ where
         Ok(())
     }
 
-    fn revoke(&self, cid: Cid) -> Result<(), Self::DelegationStoreError> {
+    fn revoke(&self, cid: Cid) -> Result<(), Self::Error> {
         self.lock().revocations.insert(cid);
         Ok(())
     }
@@ -186,8 +183,7 @@ where
         command: &str,
         policy: Vec<Predicate>, // FIXME
         now: SystemTime,
-    ) -> Result<Option<NonEmpty<(Cid, Arc<Delegation<DID, V, Enc>>)>>, Self::DelegationStoreError>
-    {
+    ) -> Result<Option<NonEmpty<(Cid, Arc<Delegation<DID, V, Enc>>)>>, Self::Error> {
         let blank_set = BTreeSet::new();
         let blank_map = BTreeMap::new();
         let tx = self.lock();

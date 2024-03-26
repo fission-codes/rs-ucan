@@ -67,7 +67,7 @@ where
         not_before: Option<Timestamp>,
         now: SystemTime,
         varsig_header: V,
-    ) -> Result<Delegation<DID, V, C>, DelegateError<S::DelegationStoreError>> {
+    ) -> Result<Delegation<DID, V, C>, DelegateError<S::Error>> {
         let mut salt = self.did.clone().to_string().into_bytes();
         let nonce = Nonce::generate_16();
 
@@ -118,7 +118,7 @@ where
         &self,
         cid: Cid, // FIXME remove and generate from the capsule header?
         delegation: Delegation<DID, V, C>,
-    ) -> Result<(), ReceiveError<S::DelegationStoreError, DID>> {
+    ) -> Result<(), ReceiveError<S::Error, DID>> {
         if self.store.get(&cid).is_ok() {
             return Ok(());
         }

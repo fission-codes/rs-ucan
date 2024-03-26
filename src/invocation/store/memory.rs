@@ -49,20 +49,13 @@ impl<T, DID: Did, V: varsig::Header<Enc>, Enc: Codec> Default for MemoryStore<T,
 impl<T, DID: Did, V: varsig::Header<Enc>, Enc: Codec> Store<T, DID, V, Enc>
     for MemoryStore<T, DID, V, Enc>
 {
-    type InvocationStoreError = Infallible;
+    type Error = Infallible;
 
-    fn get(
-        &self,
-        cid: Cid,
-    ) -> Result<Option<Arc<Invocation<T, DID, V, Enc>>>, Self::InvocationStoreError> {
+    fn get(&self, cid: Cid) -> Result<Option<Arc<Invocation<T, DID, V, Enc>>>, Self::Error> {
         Ok(self.lock().store.get(&cid).cloned())
     }
 
-    fn put(
-        &self,
-        cid: Cid,
-        invocation: Invocation<T, DID, V, Enc>,
-    ) -> Result<(), Self::InvocationStoreError> {
+    fn put(&self, cid: Cid, invocation: Invocation<T, DID, V, Enc>) -> Result<(), Self::Error> {
         self.lock().store.insert(cid, Arc::new(invocation));
         Ok(())
     }

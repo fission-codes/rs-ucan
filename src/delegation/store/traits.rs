@@ -20,31 +20,24 @@ where
     Payload<DID>: TryFrom<Named<Ipld>>,
     Named<Ipld>: From<Payload<DID>>,
 {
-    type DelegationStoreError: Debug;
+    type Error: Debug;
 
-    fn get(
-        &self,
-        cid: &Cid,
-    ) -> Result<Option<Arc<Delegation<DID, V, C>>>, Self::DelegationStoreError>;
+    fn get(&self, cid: &Cid) -> Result<Option<Arc<Delegation<DID, V, C>>>, Self::Error>;
 
     fn insert(
         &self,
         delegation: Delegation<DID, V, C>,
-    ) -> Result<(), CannotCidOr<Self::DelegationStoreError>> {
+    ) -> Result<(), DelegationStoreError<Self::Error>> {
         self.insert_keyed(delegation.cid()?, delegation)
-            .map_err(CannotCidOr::StoreError)
+            .map_err(DelegationStoreError::StoreError)
     }
 
-    fn insert_keyed(
-        &self,
-        cid: Cid,
-        delegation: Delegation<DID, V, C>,
-    ) -> Result<(), Self::DelegationStoreError>;
+    fn insert_keyed(&self, cid: Cid, delegation: Delegation<DID, V, C>) -> Result<(), Self::Error>;
 
     // FIXME validate invocation
     // store invocation
     // just... move to invocation
-    fn revoke(&self, cid: Cid) -> Result<(), Self::DelegationStoreError>;
+    fn revoke(&self, cid: Cid) -> Result<(), Self::Error>;
 
     fn get_chain(
         &self,
@@ -53,7 +46,7 @@ where
         command: &str,
         policy: Vec<Predicate>,
         now: SystemTime,
-    ) -> Result<Option<NonEmpty<(Cid, Arc<Delegation<DID, V, C>>)>>, Self::DelegationStoreError>;
+    ) -> Result<Option<NonEmpty<(Cid, Arc<Delegation<DID, V, C>>)>>, Self::Error>;
 
     fn get_chain_cids(
         &self,
@@ -62,7 +55,7 @@ where
         command: &str,
         policy: Vec<Predicate>,
         now: SystemTime,
-    ) -> Result<Option<NonEmpty<Cid>>, Self::DelegationStoreError> {
+    ) -> Result<Option<NonEmpty<Cid>>, Self::Error> {
         self.get_chain(audience, subject, command, policy, now)
             .map(|chain| chain.map(|chain| chain.map(|(cid, _)| cid)))
     }
@@ -74,7 +67,7 @@ where
         command: &str,
         policy: Vec<Predicate>,
         now: SystemTime,
-    ) -> Result<bool, Self::DelegationStoreError> {
+    ) -> Result<bool, Self::Error> {
         self.get_chain(audience, &issuer, command, policy, now)
             .map(|chain| chain.is_some())
     }
@@ -82,10 +75,10 @@ where
     fn get_many(
         &self,
         cids: &[Cid],
-    ) -> Result<Vec<Option<Arc<Delegation<DID, V, C>>>>, Self::DelegationStoreError> {
+    ) -> Result<Vec<Option<Arc<Delegation<DID, V, C>>>>, Self::Error> {
         cids.iter()
             .map(|cid| self.get(cid))
-            .collect::<Result<_, Self::DelegationStoreError>>()
+            .collect::<Result<_, Self::Error>>()
     }
 }
 
@@ -96,24 +89,17 @@ where
     Payload<DID>: TryFrom<Named<Ipld>>,
     Named<Ipld>: From<Payload<DID>>,
 {
-    type DelegationStoreError = <T as Store<DID, V, C>>::DelegationStoreError;
+    type Error = <T as Store<DID, V, C>>::Error;
 
-    fn get(
-        &self,
-        cid: &Cid,
-    ) -> Result<Option<Arc<Delegation<DID, V, C>>>, Self::DelegationStoreError> {
+    fn get(&self, cid: &Cid) -> Result<Option<Arc<Delegation<DID, V, C>>>, Self::Error> {
         (**self).get(cid)
     }
 
-    fn insert_keyed(
-        &self,
-        cid: Cid,
-        delegation: Delegation<DID, V, C>,
-    ) -> Result<(), Self::DelegationStoreError> {
+    fn insert_keyed(&self, cid: Cid, delegation: Delegation<DID, V, C>) -> Result<(), Self::Error> {
         (**self).insert_keyed(cid, delegation)
     }
 
-    fn revoke(&self, cid: Cid) -> Result<(), Self::DelegationStoreError> {
+    fn revoke(&self, cid: Cid) -> Result<(), Self::Error> {
         (**self).revoke(cid)
     }
 
@@ -124,14 +110,13 @@ where
         command: &str,
         policy: Vec<Predicate>,
         now: SystemTime,
-    ) -> Result<Option<NonEmpty<(Cid, Arc<Delegation<DID, V, C>>)>>, Self::DelegationStoreError>
-    {
+    ) -> Result<Option<NonEmpty<(Cid, Arc<Delegation<DID, V, C>>)>>, Self::Error> {
         (**self).get_chain(audience, subject, command, policy, now)
     }
 }
 
 #[derive(Debug, Error)]
-pub enum CannotCidOr<E> {
+pub enum DelegationStoreError<E> {
     #[error("Cannot make CID from delegation based on supplied Varsig")]
     CannotMakeCid(#[from] libipld_core::error::Error),
 
