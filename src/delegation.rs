@@ -42,7 +42,7 @@ use web_time::SystemTime;
 pub struct Delegation<
     DID: Did = did::preset::Verifier,
     V: varsig::Header<C> = varsig::header::Preset,
-    C: Codec + TryFrom<u64> + Into<u64> = varsig::encoding::Preset,
+    C: Codec = varsig::encoding::Preset,
 > {
     pub varsig_header: V,
     pub payload: Payload<DID>,
@@ -54,14 +54,12 @@ pub struct Delegation<
 pub struct Proof<
     DID: Did = did::preset::Verifier,
     V: varsig::Header<C> = varsig::header::Preset,
-    C: Codec + TryFrom<u64> + Into<u64> = varsig::encoding::Preset,
+    C: Codec = varsig::encoding::Preset,
 > {
     pub prf: Vec<Link<Delegation<DID, V, C>>>,
 }
 
-impl<DID: Did, V: varsig::Header<C>, C: Codec + TryFrom<u64> + Into<u64>> Capsule
-    for Proof<DID, V, C>
-{
+impl<DID: Did, V: varsig::Header<C>, C: Codec> Capsule for Proof<DID, V, C> {
     const TAG: &'static str = "ucan/prf";
 }
 
@@ -124,8 +122,7 @@ impl<DID: Did, V: varsig::Header<C>, C: Codec> Delegation<DID, V, C> {
     }
 }
 
-impl<DID: Did + Clone, V: varsig::Header<C> + Clone, C: Codec + TryFrom<u64> + Into<u64>> Envelope
-    for Delegation<DID, V, C>
+impl<DID: Did + Clone, V: varsig::Header<C> + Clone, C: Codec> Envelope for Delegation<DID, V, C>
 where
     Payload<DID>: TryFrom<Named<Ipld>>,
     Named<Ipld>: From<Payload<DID>>,
@@ -165,8 +162,7 @@ where
     }
 }
 
-impl<DID: Did + Clone, V: varsig::Header<C> + Clone, C: Codec + TryFrom<u64> + Into<u64>> Serialize
-    for Delegation<DID, V, C>
+impl<DID: Did + Clone, V: varsig::Header<C> + Clone, C: Codec> Serialize for Delegation<DID, V, C>
 where
     Payload<DID>: TryFrom<Named<Ipld>>,
 {
@@ -178,8 +174,8 @@ where
     }
 }
 
-impl<'de, DID: Did + Clone, V: varsig::Header<C> + Clone, C: Codec + TryFrom<u64> + Into<u64>>
-    Deserialize<'de> for Delegation<DID, V, C>
+impl<'de, DID: Did + Clone, V: varsig::Header<C> + Clone, C: Codec> Deserialize<'de>
+    for Delegation<DID, V, C>
 where
     Payload<DID>: TryFrom<Named<Ipld>>,
     <Payload<DID> as TryFrom<Named<Ipld>>>::Error: std::fmt::Display,

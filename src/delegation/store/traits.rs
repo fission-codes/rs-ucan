@@ -14,7 +14,7 @@ use std::{fmt::Debug, sync::Arc};
 use thiserror::Error;
 use web_time::SystemTime;
 
-pub trait Store<DID: Did + Clone, V: varsig::Header<C> + Clone, C: Codec + TryFrom<u64> + Into<u64>>
+pub trait Store<DID: Did + Clone, V: varsig::Header<C> + Clone, C: Codec>
 where
     Ipld: Encode<C>,
     Payload<DID>: TryFrom<Named<Ipld>>,
@@ -89,12 +89,8 @@ where
     }
 }
 
-impl<
-        T: Store<DID, V, C>,
-        DID: Did + Clone,
-        V: varsig::Header<C> + Clone,
-        C: Codec + TryFrom<u64> + Into<u64>,
-    > Store<DID, V, C> for &T
+impl<T: Store<DID, V, C>, DID: Did + Clone, V: varsig::Header<C> + Clone, C: Codec> Store<DID, V, C>
+    for &T
 where
     Ipld: Encode<C>,
     Payload<DID>: TryFrom<Named<Ipld>>,

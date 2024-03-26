@@ -37,20 +37,16 @@ pub struct Receipt<
     _marker: std::marker::PhantomData<C>,
 }
 
-impl<T: Responds, DID: Did, V: varsig::Header<C>, C: Codec + TryFrom<u64> + Into<u64>>
-    did::Verifiable<DID> for Receipt<T, DID, V, C>
+impl<T: Responds, DID: Did, V: varsig::Header<C>, C: Codec> did::Verifiable<DID>
+    for Receipt<T, DID, V, C>
 {
     fn verifier(&self) -> &DID {
         &self.payload.verifier()
     }
 }
 
-impl<
-        T: Responds + Clone,
-        DID: Did + Clone,
-        V: varsig::Header<C> + Clone,
-        C: Codec + TryFrom<u64> + Into<u64>,
-    > From<Receipt<T, DID, V, C>> for Ipld
+impl<T: Responds + Clone, DID: Did + Clone, V: varsig::Header<C> + Clone, C: Codec>
+    From<Receipt<T, DID, V, C>> for Ipld
 where
     Ipld: From<T::Success>,
     Payload<T, DID>: TryFrom<arguments::Named<Ipld>>,
@@ -60,12 +56,8 @@ where
     }
 }
 
-impl<
-        T: Responds + Clone,
-        DID: Did + Clone,
-        V: varsig::Header<C> + Clone,
-        C: Codec + TryFrom<u64> + Into<u64>,
-    > Envelope for Receipt<T, DID, V, C>
+impl<T: Responds + Clone, DID: Did + Clone, V: varsig::Header<C> + Clone, C: Codec> Envelope
+    for Receipt<T, DID, V, C>
 where
     Ipld: From<T::Success>,
     Payload<T, DID>: TryFrom<arguments::Named<Ipld>>,
@@ -105,12 +97,8 @@ where
     }
 }
 
-impl<
-        T: Responds + Clone,
-        DID: Did + Clone,
-        V: varsig::Header<C> + Clone,
-        C: Codec + TryFrom<u64> + Into<u64>,
-    > Serialize for Receipt<T, DID, V, C>
+impl<T: Responds + Clone, DID: Did + Clone, V: varsig::Header<C> + Clone, C: Codec> Serialize
+    for Receipt<T, DID, V, C>
 where
     Ipld: From<T::Success>,
     Payload<T, DID>: TryFrom<arguments::Named<Ipld>>,
@@ -123,13 +111,8 @@ where
     }
 }
 
-impl<
-        'de,
-        T: Responds + Clone,
-        DID: Did + Clone,
-        V: varsig::Header<C> + Clone,
-        C: Codec + TryFrom<u64> + Into<u64>,
-    > Deserialize<'de> for Receipt<T, DID, V, C>
+impl<'de, T: Responds + Clone, DID: Did + Clone, V: varsig::Header<C> + Clone, C: Codec>
+    Deserialize<'de> for Receipt<T, DID, V, C>
 where
     Ipld: From<T::Success>,
     Payload<T, DID>: TryFrom<arguments::Named<Ipld>>,

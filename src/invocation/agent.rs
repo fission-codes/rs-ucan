@@ -291,14 +291,8 @@ pub enum Recipient<T> {
 }
 
 #[derive(Debug, Error, EnumAsInner)]
-pub enum ReceiveError<
-    T,
-    DID: Did,
-    D,
-    S: Store<T, DID, V, C>,
-    V: varsig::Header<C>,
-    C: Codec + TryFrom<u64> + Into<u64>,
-> where
+pub enum ReceiveError<T, DID: Did, D, S: Store<T, DID, V, C>, V: varsig::Header<C>, C: Codec>
+where
     <S as Store<T, DID, V, C>>::InvocationStoreError: fmt::Debug,
 {
     #[error("couldn't find delegation: {0}")]

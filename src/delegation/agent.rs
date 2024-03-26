@@ -39,12 +39,8 @@ pub struct Agent<
     _marker: PhantomData<(V, C)>,
 }
 
-impl<
-        S: Store<DID, V, C> + Clone,
-        DID: Did + Clone,
-        V: varsig::Header<C> + Clone,
-        C: Codec + TryFrom<u64> + Into<u64>,
-    > Agent<S, DID, V, C>
+impl<S: Store<DID, V, C> + Clone, DID: Did + Clone, V: varsig::Header<C> + Clone, C: Codec>
+    Agent<S, DID, V, C>
 where
     Ipld: Encode<C>,
     Payload<DID>: TryFrom<Named<Ipld>>,

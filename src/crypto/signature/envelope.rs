@@ -16,7 +16,7 @@ pub trait Envelope: Sized {
     type DID: Did;
     type Payload: Clone + Capsule + TryFrom<Named<Ipld>> + Into<Named<Ipld>>;
     type VarsigHeader: varsig::Header<Self::Encoder> + Clone;
-    type Encoder: Codec + TryFrom<u64> + Into<u64>;
+    type Encoder: Codec;
 
     fn varsig_header(&self) -> &Self::VarsigHeader;
     fn signature(&self) -> &<Self::DID as Did>::Signature;

@@ -9,7 +9,7 @@ pub struct MemoryStore<
     T = crate::ability::preset::Preset,
     DID: crate::did::Did = crate::did::preset::Verifier,
     V: varsig::Header<C> = varsig::header::Preset,
-    C: Codec + TryFrom<u64> + Into<u64> = varsig::encoding::Preset,
+    C: Codec = varsig::encoding::Preset,
 > {
     inner: Arc<Mutex<MemoryStoreInner<T, DID, V, C>>>,
 }
@@ -19,7 +19,7 @@ pub struct MemoryStoreInner<
     T = crate::ability::preset::Preset,
     DID: crate::did::Did = crate::did::preset::Verifier,
     V: varsig::Header<C> = varsig::header::Preset,
-    C: Codec + TryFrom<u64> + Into<u64> = varsig::encoding::Preset,
+    C: Codec = varsig::encoding::Preset,
 > {
     store: BTreeMap<Cid, Arc<Invocation<T, DID, V, C>>>,
 }
