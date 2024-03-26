@@ -37,7 +37,7 @@ pub struct Agent<
     T: ToCommand = ability::preset::Preset,
     DID: Did + Clone = did::preset::Verifier,
     V: varsig::Header<C> + Clone = varsig::header::Preset,
-    C: Codec + Into<u64> + TryFrom<u64> = varsig::encoding::Preset,
+    C: Codec = varsig::encoding::Preset,
 > where
     Ipld: Encode<C>,
     delegation::Payload<DID>: TryFrom<Named<Ipld>>,
@@ -67,7 +67,7 @@ where
     S: Store<T, DID, V, C>,
     D: delegation::store::Store<DID, V, C>,
     V: varsig::Header<C> + Clone,
-    C: Codec + Into<u64> + TryFrom<u64>,
+    C: Codec,
     <S as Store<T, DID, V, C>>::InvocationStoreError: fmt::Debug,
     <D as delegation::store::Store<DID, V, C>>::DelegationStoreError: fmt::Debug,
     delegation::Payload<DID>: TryFrom<Named<Ipld>>,

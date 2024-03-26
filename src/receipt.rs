@@ -28,7 +28,7 @@ pub struct Receipt<
     T: Responds,
     DID: Did = did::preset::Verifier,
     V: varsig::Header<C> = varsig::header::Preset,
-    C: Codec + Into<u64> + TryFrom<u64> = varsig::encoding::Preset,
+    C: Codec = varsig::encoding::Preset,
 > {
     pub varsig_header: V,
     pub signature: DID::Signature,

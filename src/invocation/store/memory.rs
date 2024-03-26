@@ -24,9 +24,7 @@ pub struct MemoryStoreInner<
     store: BTreeMap<Cid, Arc<Invocation<T, DID, V, C>>>,
 }
 
-impl<T, DID: Did, V: varsig::Header<Enc>, Enc: Codec + Into<u64> + TryFrom<u64>>
-    MemoryStore<T, DID, V, Enc>
-{
+impl<T, DID: Did, V: varsig::Header<Enc>, Enc: Codec> MemoryStore<T, DID, V, Enc> {
     fn lock(&self) -> MutexGuard<'_, MemoryStoreInner<T, DID, V, Enc>> {
         match self.inner.lock() {
             Ok(guard) => guard,
@@ -38,9 +36,7 @@ impl<T, DID: Did, V: varsig::Header<Enc>, Enc: Codec + Into<u64> + TryFrom<u64>>
     }
 }
 
-impl<T, DID: Did, V: varsig::Header<Enc>, Enc: Codec + Into<u64> + TryFrom<u64>> Default
-    for MemoryStore<T, DID, V, Enc>
-{
+impl<T, DID: Did, V: varsig::Header<Enc>, Enc: Codec> Default for MemoryStore<T, DID, V, Enc> {
     fn default() -> Self {
         Self {
             inner: Arc::new(Mutex::new(MemoryStoreInner {
@@ -50,8 +46,8 @@ impl<T, DID: Did, V: varsig::Header<Enc>, Enc: Codec + Into<u64> + TryFrom<u64>>
     }
 }
 
-impl<T, DID: Did, V: varsig::Header<Enc>, Enc: Codec + Into<u64> + TryFrom<u64>>
-    Store<T, DID, V, Enc> for MemoryStore<T, DID, V, Enc>
+impl<T, DID: Did, V: varsig::Header<Enc>, Enc: Codec> Store<T, DID, V, Enc>
+    for MemoryStore<T, DID, V, Enc>
 {
     type InvocationStoreError = Infallible;
 

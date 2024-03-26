@@ -65,7 +65,7 @@ impl<DID: Did, V: varsig::Header<C>, C: Codec + TryFrom<u64> + Into<u64>> Capsul
     const TAG: &'static str = "ucan/prf";
 }
 
-impl<DID: Did, V: varsig::Header<C>, C: Codec + Into<u64> + TryFrom<u64>> Delegation<DID, V, C> {
+impl<DID: Did, V: varsig::Header<C>, C: Codec> Delegation<DID, V, C> {
     pub fn new(
         varsig_header: V,
         signature: DID::Signature,

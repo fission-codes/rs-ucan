@@ -33,7 +33,7 @@ impl<C: Into<u64> + Clone> From<EdDsaHeader<C>> for Vec<u8> {
     }
 }
 
-impl<C: Codec + Into<u64> + TryFrom<u64>> Header<C> for EdDsaHeader<C> {
+impl<C: Codec> Header<C> for EdDsaHeader<C> {
     type Signature = ed25519_dalek::Signature;
     type Verifier = ed25519_dalek::VerifyingKey;
 
