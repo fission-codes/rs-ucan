@@ -114,7 +114,7 @@ where
             ability,
             proofs,
             metadata,
-            nonce: Nonce::generate_12(&mut vec![]),
+            nonce: Nonce::generate_16(),
             cause,
             expiration,
             issued_at,

@@ -69,7 +69,7 @@ where
         varsig_header: V,
     ) -> Result<Delegation<DID, V, C>, DelegateError<S::DelegationStoreError>> {
         let mut salt = self.did.clone().to_string().into_bytes();
-        let nonce = Nonce::generate_12(&mut salt);
+        let nonce = Nonce::generate_16();
 
         if *subject == self.did {
             let payload: Payload<DID> = Payload {
