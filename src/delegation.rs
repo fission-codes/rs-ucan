@@ -92,6 +92,16 @@ impl<DID: Did, V: varsig::Header<C>, C: Codec> Delegation<DID, V, C> {
         &self.payload.audience
     }
 
+    /// Retrieve the `via` of a [`Delegation`]
+    pub fn via(&self) -> &Option<DID> {
+        &self.payload.via
+    }
+
+    /// Retrieve the `command` of a [`Delegation`]
+    pub fn command(&self) -> &String {
+        &self.payload.command
+    }
+
     /// Retrive the `policy` of a [`Delegation`]
     pub fn policy(&self) -> &Vec<Predicate> {
         &self.payload.policy
