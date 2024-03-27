@@ -54,7 +54,7 @@ pub struct Invocation<
     A,
     DID: did::Did = did::preset::Verifier,
     V: varsig::Header<C> = varsig::header::Preset,
-    C: Codec + TryFrom<u64> + Into<u64> = varsig::encoding::Preset,
+    C: Codec = varsig::encoding::Preset,
 > {
     pub varsig_header: V,
     pub payload: Payload<A, DID>,
@@ -66,7 +66,7 @@ impl<
         A: Clone + ToCommand + ParseAbility,
         DID: Clone + did::Did,
         V: Clone + varsig::Header<C>,
-        C: Codec + TryFrom<u64> + Into<u64>,
+        C: Codec,
     > Encode<C> for Invocation<A, DID, V, C>
 where
     Ipld: Encode<C>,
@@ -79,12 +79,8 @@ where
     }
 }
 
-impl<
-        A: Clone + ToCommand + ParseAbility,
-        DID: Did + Clone,
-        V: varsig::Header<C>,
-        C: Codec + TryFrom<u64> + Into<u64>,
-    > Invocation<A, DID, V, C>
+impl<A: Clone + ToCommand + ParseAbility, DID: Did + Clone, V: varsig::Header<C>, C: Codec>
+    Invocation<A, DID, V, C>
 where
     Ipld: Encode<C>,
 {
@@ -150,7 +146,7 @@ where
     }
 }
 
-impl<A, DID: Did, V: varsig::Header<C>, C: Codec + TryFrom<u64> + Into<u64>> did::Verifiable<DID>
+impl<A, DID: Did, V: varsig::Header<C>, C: Codec> did::Verifiable<DID>
     for Invocation<A, DID, V, C>
 {
     fn verifier(&self) -> &DID {
@@ -162,7 +158,7 @@ impl<
         A: Clone + ToCommand + ParseAbility,
         DID: Did + Clone,
         V: varsig::Header<C> + Clone,
-        C: Codec + TryFrom<u64> + Into<u64>,
+        C: Codec,
     > From<Invocation<A, DID, V, C>> for Ipld
 where
     Named<Ipld>: From<A>,
@@ -177,7 +173,7 @@ impl<
         A: Clone + ToCommand + ParseAbility,
         DID: Did + Clone,
         V: varsig::Header<C> + Clone,
-        C: Codec + TryFrom<u64> + Into<u64>,
+        C: Codec,
     > Envelope for Invocation<A, DID, V, C>
 where
     Named<Ipld>: From<A>,
@@ -222,7 +218,7 @@ impl<
         A: Clone + ToCommand + ParseAbility,
         DID: Did + Clone,
         V: varsig::Header<C> + Clone,
-        C: Codec + TryFrom<u64> + Into<u64>,
+        C: Codec,
     > Serialize for Invocation<A, DID, V, C>
 where
     Named<Ipld>: From<A>,
@@ -241,7 +237,7 @@ impl<
         A: Clone + ToCommand + ParseAbility,
         DID: Did + Clone,
         V: varsig::Header<C> + Clone,
-        C: Codec + TryFrom<u64> + Into<u64>,
+        C: Codec,
     > Deserialize<'de> for Invocation<A, DID, V, C>
 where
     Named<Ipld>: From<A>,

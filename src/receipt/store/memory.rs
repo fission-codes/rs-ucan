@@ -10,19 +10,15 @@ use std::{collections::BTreeMap, convert::Infallible, fmt};
 
 /// An in-memory [`receipt::Store`][crate::receipt::Store].
 #[derive(Debug, Clone, PartialEq)]
-pub struct MemoryStore<
-    T: Responds,
-    DID: Did,
-    V: varsig::Header<Enc>,
-    Enc: Codec + Into<u64> + TryFrom<u64>,
-> where
+pub struct MemoryStore<T: Responds, DID: Did, V: varsig::Header<Enc>, Enc: Codec>
+where
     T::Success: fmt::Debug + Clone + PartialEq,
 {
     store: BTreeMap<task::Id, Receipt<T, DID, V, Enc>>,
 }
 
-impl<T: Responds, DID: Did, V: varsig::Header<Enc>, Enc: Codec + Into<u64> + TryFrom<u64>>
-    Store<T, DID, V, Enc> for MemoryStore<T, DID, V, Enc>
+impl<T: Responds, DID: Did, V: varsig::Header<Enc>, Enc: Codec> Store<T, DID, V, Enc>
+    for MemoryStore<T, DID, V, Enc>
 where
     <T as Responds>::Success: TryFrom<Ipld> + Into<Ipld> + Clone + fmt::Debug + PartialEq,
 {

@@ -38,7 +38,7 @@ impl<C: Into<u64>> From<Es512Header<C>> for Vec<u8> {
     }
 }
 
-impl<C: Codec + Into<u64> + TryFrom<u64>> Header<C> for Es512Header<C> {
+impl<C: Codec> Header<C> for Es512Header<C> {
     type Signature = p521::ecdsa::Signature;
     type Verifier = p521::ecdsa::VerifyingKey;
 
