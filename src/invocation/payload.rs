@@ -188,8 +188,10 @@ impl<A, DID: Did> Payload<A, DID> {
                     }
                 }
 
-                if proof.expiration < now_ts {
-                    return Err(ValidationError::Expired.into());
+                if let Some(exp) = proof.expiration {
+                    if exp < now_ts {
+                        return Err(ValidationError::Expired.into());
+                    }
                 }
 
                 if let Some(nbf) = proof.not_before.clone() {

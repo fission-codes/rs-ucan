@@ -650,7 +650,6 @@ mod tests {
                     .issuer(account.clone())
                     .audience(server.clone())
                     .command("/".into())
-                    .expiration(crate::time::Timestamp::five_years_from_now())
                     .build()?,
             )?;
 
@@ -663,7 +662,6 @@ mod tests {
                     .issuer(server.clone())
                     .audience(device.clone())
                     .command("/".into())
-                    .expiration(crate::time::Timestamp::five_years_from_now())
                     .build()?, // I don't love this is now failable
             )?;
 
@@ -676,7 +674,6 @@ mod tests {
                     .issuer(dnslink.clone())
                     .audience(account.clone())
                     .command("/".into())
-                    .expiration(crate::time::Timestamp::five_years_from_now())
                     .build()?,
             )?;
 

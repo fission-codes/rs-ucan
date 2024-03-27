@@ -113,7 +113,7 @@ impl<DID: Did, V: varsig::Header<C>, C: Codec> Delegation<DID, V, C> {
     }
 
     /// Retrive the `expiration` of a [`Delegation`]
-    pub fn expiration(&self) -> &Timestamp {
+    pub fn expiration(&self) -> &Option<Timestamp> {
         &self.payload.expiration
     }
 

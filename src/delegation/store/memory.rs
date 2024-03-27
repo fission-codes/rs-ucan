@@ -332,7 +332,6 @@ mod tests {
                 .issuer(did.clone())
                 .audience(did.clone())
                 .command("/".into())
-                .expiration(crate::time::Timestamp::five_years_from_now())
                 .build()?,
         )?;
 
@@ -361,7 +360,6 @@ mod tests {
                 .issuer(did.clone())
                 .audience(did.clone())
                 .command("/".into())
-                .expiration(crate::time::Timestamp::five_years_from_now())
                 .build()?,
         )?;
 
@@ -420,7 +418,6 @@ mod tests {
                     .issuer(alice.clone())
                     .audience(bob.clone())
                     .command("/".into())
-                    .expiration(crate::time::Timestamp::five_years_from_now())
                     .build()?,
             )?;
 
@@ -452,7 +449,6 @@ mod tests {
                     .issuer(bob.clone())
                     .audience(carol.clone())
                     .command("/example".into())
-                    .expiration(crate::time::Timestamp::five_years_from_now())
                     .build()?,
             )?;
 
@@ -466,7 +462,6 @@ mod tests {
                     .issuer(alice.clone())
                     .audience(bob.clone())
                     .command("/".into())
-                    .expiration(crate::time::Timestamp::five_years_from_now())
                     .build()?,
             )?;
 
@@ -480,7 +475,6 @@ mod tests {
                     .issuer(alice.clone())
                     .audience(carol.clone())
                     .command("/test".into())
-                    .expiration(crate::time::Timestamp::five_years_from_now())
                     .build()?,
             )?;
 
@@ -512,7 +506,6 @@ mod tests {
                     .issuer(alice.clone())
                     .audience(bob.clone())
                     .command("/".into())
-                    .expiration(crate::time::Timestamp::five_years_from_now())
                     .build()?,
             )?;
 
@@ -526,7 +519,6 @@ mod tests {
                     .issuer(bob.clone())
                     .audience(carol.clone())
                     .command("/".into())
-                    .expiration(crate::time::Timestamp::five_years_from_now())
                     .build()?,
             )?;
 
@@ -568,7 +560,6 @@ mod tests {
                     .issuer(alice.clone())
                     .audience(bob.clone())
                     .command("/test".into())
-                    .expiration(crate::time::Timestamp::five_years_from_now())
                     .build()?,
             )?;
 
@@ -582,7 +573,6 @@ mod tests {
                     .issuer(bob.clone())
                     .audience(carol.clone())
                     .command("/test/me".into())
-                    .expiration(crate::time::Timestamp::five_years_from_now())
                     .build()?,
             )?;
 
@@ -631,7 +621,6 @@ mod tests {
                     .issuer(alice.clone())
                     .audience(bob.clone())
                     .command("/test".into())
-                    .expiration(crate::time::Timestamp::five_years_from_now())
                     .build()?,
             )?;
 
@@ -645,7 +634,6 @@ mod tests {
                     .issuer(carol.clone())
                     .audience(dan.clone())
                     .command("/test/me".into())
-                    .expiration(crate::time::Timestamp::five_years_from_now())
                     .build()?,
             )?;
 
@@ -692,7 +680,6 @@ mod tests {
                     .issuer(bob.clone())
                     .audience(carol.clone())
                     .command("/".into())
-                    .expiration(crate::time::Timestamp::five_years_from_now())
                     .build()?,
             )?;
 
@@ -705,7 +692,6 @@ mod tests {
                     .issuer(carol.clone())
                     .audience(dave.clone())
                     .command("/".into())
-                    .expiration(crate::time::Timestamp::five_years_from_now())
                     .build()?, // I don't love this is now failable
             )?;
 
@@ -718,7 +704,6 @@ mod tests {
                     .issuer(alice.clone())
                     .audience(bob.clone())
                     .command("/".into())
-                    .expiration(crate::time::Timestamp::five_years_from_now())
                     .build()?,
             )?;
 
@@ -776,7 +761,6 @@ mod tests {
                     .issuer(bob.clone())
                     .audience(carol.clone())
                     .command("/".into())
-                    .expiration(crate::time::Timestamp::five_years_from_now())
                     .build()?,
             )?;
 
@@ -789,7 +773,6 @@ mod tests {
                     .issuer(carol.clone())
                     .audience(dave.clone())
                     .command("/".into())
-                    .expiration(crate::time::Timestamp::five_years_from_now())
                     .build()?, // I don't love this is now failable
             )?;
 
@@ -802,7 +785,6 @@ mod tests {
                     .issuer(alice.clone())
                     .audience(bob.clone())
                     .command("/".into())
-                    .expiration(crate::time::Timestamp::five_years_from_now())
                     .build()?,
             )?;
 

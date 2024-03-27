@@ -77,7 +77,8 @@ pub struct Payload<DID: Did> {
     /// given as a [Unix timestamp].
     ///
     /// [Unix timestamp]: https://en.wikipedia.org/wiki/Unix_time
-    pub expiration: Timestamp,
+    #[builder(default)]
+    pub expiration: Option<Timestamp>,
 
     /// An optional earliest wall-clock time that the UCAN is valid from,
     /// given as a [Unix timestamp].
@@ -91,8 +92,10 @@ impl<DID: Did> Payload<DID> {
     pub fn check_time(&self, now: SystemTime) -> Result<(), TimeBoundError> {
         let ts_now = &Timestamp::postel(now);
 
-        if &self.expiration < ts_now {
-            return Err(TimeBoundError::Expired);
+        if let Some(ref exp) = self.expiration {
+            if exp < ts_now {
+                return Err(TimeBoundError::Expired);
+            }
         }
 
         if let Some(ref nbf) = self.not_before {
@@ -190,8 +193,11 @@ where
                 },
                 "exp" => match ipld {
                     Ipld::Integer(i) => {
-                        expiration = Some(Timestamp::try_from(i).map_err(ParseError::BadTimestamp)?)
+                        expiration = Some(Some(
+                            Timestamp::try_from(i).map_err(ParseError::BadTimestamp)?,
+                        ))
                     }
+                    Ipld::Null => expiration = Some(None),
                     bad => return Err(ParseError::WrongTypeForField("exp".to_string(), bad)),
                 },
                 "nbf" => match ipld {
@@ -308,7 +314,10 @@ impl<DID: Did> From<Payload<DID>> for Named<Ipld> {
                 Ipld::List(payload.policy.into_iter().map(|p| p.into()).collect())
             }),
             ("nonce".to_string(), payload.nonce.into()),
-            ("exp".to_string(), payload.expiration.into()),
+            (
+                "exp".to_string(),
+                payload.expiration.map_or(Ipld::Null, |e| e.into()),
+            ),
         ]);
 
         if let Some(subject) = payload.subject {
@@ -348,7 +357,7 @@ where
             DID::arbitrary_with(did_args),
             String::arbitrary(),
             Nonce::arbitrary(),
-            Timestamp::arbitrary(),
+            Option::<Timestamp>::arbitrary(),
             Option::<Timestamp>::arbitrary(),
             prop::collection::btree_map(".*", ipld::Newtype::arbitrary(), 0..5).prop_map(|m| {
                 m.into_iter()
@@ -442,7 +451,7 @@ mod tests {
             prop_assert_eq!(cmd.unwrap(), &Ipld::String(payload.command.clone()));
             prop_assert_eq!(pol.unwrap(), &Ipld::List(payload.policy.clone().into_iter().map(|p| p.into()).collect()));
             prop_assert_eq!(nonce.unwrap(), &payload.nonce.into());
-            prop_assert_eq!(exp.unwrap(), &payload.expiration.into());
+            prop_assert_eq!(exp.unwrap(), &payload.expiration.map_or(Ipld::Null, |e| e.into()));
 
             // Optional Fields
             match (payload.subject, named.get("sub")) {
