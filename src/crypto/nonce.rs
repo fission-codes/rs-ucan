@@ -4,11 +4,7 @@
 
 use enum_as_inner::EnumAsInner;
 use getrandom::getrandom;
-use libipld_core::{
-    ipld::Ipld,
-    multibase::Base::Base32HexLower,
-    multihash::{Hasher, Sha2_256},
-};
+use libipld_core::{ipld::Ipld, multibase::Base::Base32HexLower};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -86,19 +82,7 @@ impl Nonce {
     pub fn generate_16() -> Nonce {
         let mut buf = [0; 16];
         getrandom(&mut buf).expect("irrecoverable getrandom failure");
-
-        let mut hasher = Sha2_256::default();
-        hasher.update(&mut buf);
-
-        let bytes = hasher
-            .finalize()
-            .chunks(16)
-            .next()
-            .expect("SHA2_256 is 32 bytes")
-            .try_into()
-            .expect("we set the length to 16 earlier");
-
-        Nonce::Nonce16(bytes)
+        Nonce::Nonce16(buf)
     }
 }
 
