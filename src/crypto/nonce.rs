@@ -126,13 +126,12 @@ impl Nonce {
     /// assert_eq!(Vec::from(nonce).len(), 12);
     /// ```
     pub fn generate_12(salt: &mut Vec<u8>) -> Nonce {
-        salt.append(&mut [0].repeat(12));
-
-        let buf = salt.as_mut_slice();
-        getrandom(buf).expect("irrecoverable getrandom failure");
+        let mut buf = [0; 12];
+        getrandom(&mut buf).expect("irrecoverable getrandom failure");
+        buf.to_vec().append(salt);
 
         let mut hasher = Sha2_256::default();
-        hasher.update(buf);
+        hasher.update(&mut buf);
 
         let bytes = hasher
             .finalize()
@@ -163,13 +162,12 @@ impl Nonce {
     /// assert_eq!(Vec::from(nonce).len(), 16);
     /// ```
     pub fn generate_16(salt: &mut Vec<u8>) -> Nonce {
-        salt.append(&mut [0].repeat(16));
-
-        let buf = salt.as_mut_slice();
-        getrandom(buf).expect("irrecoverable getrandom failure");
+        let mut buf = [0; 16];
+        getrandom(&mut buf).expect("irrecoverable getrandom failure");
+        buf.to_vec().append(salt);
 
         let mut hasher = Sha2_256::default();
-        hasher.update(buf);
+        hasher.update(&mut buf);
 
         let bytes = hasher
             .finalize()
