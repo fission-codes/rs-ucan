@@ -27,9 +27,9 @@ where
     fn insert(
         &self,
         delegation: Delegation<DID, V, C>,
-    ) -> Result<(), DelegationStoreError<Self::Error>> {
+    ) -> Result<(), DelegationInsertError<Self::Error>> {
         self.insert_keyed(delegation.cid()?, delegation)
-            .map_err(DelegationStoreError::StoreError)
+            .map_err(DelegationInsertError::StoreError)
     }
 
     fn insert_keyed(&self, cid: Cid, delegation: Delegation<DID, V, C>) -> Result<(), Self::Error>;
@@ -116,7 +116,7 @@ where
 }
 
 #[derive(Debug, Error)]
-pub enum DelegationStoreError<E> {
+pub enum DelegationInsertError<E> {
     #[error("Cannot make CID from delegation based on supplied Varsig")]
     CannotMakeCid(#[from] libipld_core::error::Error),
 
