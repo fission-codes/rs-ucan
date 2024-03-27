@@ -109,8 +109,6 @@ where
             .map(|chain| chain.map(|(cid, _)| cid).into())
             .unwrap_or(vec![]);
 
-        let mut seed = vec![];
-
         let payload = Payload {
             issuer: self.did.clone(),
             subject,
@@ -118,7 +116,7 @@ where
             ability,
             proofs,
             metadata,
-            nonce: Nonce::generate_12(&mut seed),
+            nonce: Nonce::generate_16(),
             cause,
             expiration,
             issued_at,

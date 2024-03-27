@@ -79,7 +79,7 @@ pub struct Payload<T: Responds, DID: Did> {
     ///
     /// [cryptographic nonce]: https://en.wikipedia.org/wiki/Cryptographic_nonce
     /// [`Cid`]: libipld_core::cid::Cid
-    #[builder(default = "Nonce::generate_16(&mut vec![])")]
+    #[builder(default = "Nonce::generate_16()")]
     pub nonce: Nonce,
 
     /// An optional [Unix timestamp] (wall-clock time) at which the

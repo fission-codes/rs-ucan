@@ -70,7 +70,7 @@ pub struct Payload<DID: Did> {
     ///
     /// [cryptograpgic nonce]: https://en.wikipedia.org/wiki/Cryptographic_nonce
     /// [`Cid`]: libipld_core::cid::Cid ;
-    #[builder(default = "Nonce::generate_16(&mut vec![])")]
+    #[builder(default = "Nonce::generate_16()")]
     pub nonce: Nonce,
 
     /// The latest wall-clock time that the UCAN is valid until,

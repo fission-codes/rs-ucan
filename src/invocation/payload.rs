@@ -102,7 +102,7 @@ pub struct Payload<A, DID: Did> {
     /// A [cryptographic nonce] to ensure that the UCAN's [`Cid`] is unique.
     ///
     /// [cryptographic nonce]: https://en.wikipedia.org/wiki/Cryptographic_nonce
-    #[builder(default = "Nonce::generate_16(&mut vec![])")]
+    #[builder(default = "Nonce::generate_16()")]
     pub nonce: Nonce,
 
     /// An optional [Unix timestamp] (wall-clock time) at which this [`Invocation`]

@@ -21,9 +21,6 @@ use proptest::prelude::*;
 /// Known [`Nonce`] types
 #[derive(Clone, Debug, EnumAsInner, Serialize, Deserialize)]
 pub enum Nonce {
-    /// 96-bit, 12-byte nonce
-    Nonce12([u8; 12]),
-
     /// 128-bit, 16-byte nonce
     Nonce16([u8; 16]),
 
@@ -34,26 +31,11 @@ pub enum Nonce {
 impl PartialEq for Nonce {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Nonce::Nonce12(a), Nonce::Nonce12(b)) => a == b,
             (Nonce::Nonce16(a), Nonce::Nonce16(b)) => a == b,
             (Nonce::Custom(a), Nonce::Custom(b)) => a == b,
-            (Nonce::Custom(a), Nonce::Nonce12(b)) => {
-                if a.len() == 12 {
-                    a.as_slice() == b
-                } else {
-                    false
-                }
-            }
             (Nonce::Custom(a), Nonce::Nonce16(b)) => {
                 if a.len() == 16 {
                     a.as_slice() == b
-                } else {
-                    false
-                }
-            }
-            (Nonce::Nonce12(a), Nonce::Custom(b)) => {
-                if b.len() == 12 {
-                    a == b.as_slice()
                 } else {
                     false
                 }
@@ -70,12 +52,6 @@ impl PartialEq for Nonce {
     }
 }
 
-impl From<[u8; 12]> for Nonce {
-    fn from(s: [u8; 12]) -> Self {
-        Nonce::Nonce12(s)
-    }
-}
-
 impl From<[u8; 16]> for Nonce {
     fn from(s: [u8; 16]) -> Self {
         Nonce::Nonce16(s)
@@ -85,7 +61,6 @@ impl From<[u8; 16]> for Nonce {
 impl From<Nonce> for Vec<u8> {
     fn from(nonce: Nonce) -> Self {
         match nonce {
-            Nonce::Nonce12(nonce) => nonce.to_vec(),
             Nonce::Nonce16(nonce) => nonce.to_vec(),
             Nonce::Custom(nonce) => nonce,
         }
@@ -94,10 +69,6 @@ impl From<Nonce> for Vec<u8> {
 
 impl From<Vec<u8>> for Nonce {
     fn from(nonce: Vec<u8>) -> Self {
-        if let Ok(twelve) = <[u8; 12]>::try_from(nonce.clone()) {
-            return twelve.into();
-        }
-
         if let Ok(sixteen) = <[u8; 16]>::try_from(nonce.clone()) {
             return sixteen.into();
         }
@@ -107,43 +78,6 @@ impl From<Vec<u8>> for Nonce {
 }
 
 impl Nonce {
-    /// Generate a 96-bit, 12-byte nonce.
-    /// This is the minimum nonce size typically recommended.
-    ///
-    /// # Arguments
-    ///
-    /// * `salt` - A salt. This may be left empty, but is recommended to avoid collision.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # use ucan::crypto::Nonce;
-    /// # use ucan::did::Did;
-    /// #
-    /// let mut salt = "did:example:123".as_bytes().to_vec();
-    /// let nonce = Nonce::generate_12(&mut salt);
-    ///
-    /// assert_eq!(Vec::from(nonce).len(), 12);
-    /// ```
-    pub fn generate_12(salt: &mut Vec<u8>) -> Nonce {
-        let mut buf = [0; 12];
-        getrandom(&mut buf).expect("irrecoverable getrandom failure");
-        buf.to_vec().append(salt);
-
-        let mut hasher = Sha2_256::default();
-        hasher.update(&mut buf);
-
-        let bytes = hasher
-            .finalize()
-            .chunks(12)
-            .next()
-            .expect("SHA2_256 is 32 bytes")
-            .try_into()
-            .expect("we set the length to 12 earlier");
-
-        Nonce::Nonce12(bytes)
-    }
-
     /// Generate a 128-bit, 16-byte nonce
     ///
     /// # Arguments
@@ -157,14 +91,13 @@ impl Nonce {
     /// # use ucan::did::Did;
     /// #
     /// let mut salt = "did:example:123".as_bytes().to_vec();
-    /// let nonce = Nonce::generate_16(&mut salt);
+    /// let nonce = Nonce::generate_16();
     ///
     /// assert_eq!(Vec::from(nonce).len(), 16);
     /// ```
-    pub fn generate_16(salt: &mut Vec<u8>) -> Nonce {
+    pub fn generate_16() -> Nonce {
         let mut buf = [0; 16];
         getrandom(&mut buf).expect("irrecoverable getrandom failure");
-        buf.to_vec().append(salt);
 
         let mut hasher = Sha2_256::default();
         hasher.update(&mut buf);
@@ -184,9 +117,6 @@ impl Nonce {
 impl fmt::Display for Nonce {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Nonce::Nonce12(nonce) => {
-                write!(f, "{}", Base32HexLower.encode(nonce.as_slice()))
-            }
             Nonce::Nonce16(nonce) => {
                 write!(f, "{}", Base32HexLower.encode(nonce.as_slice()))
             }
@@ -200,7 +130,6 @@ impl fmt::Display for Nonce {
 impl From<Nonce> for Ipld {
     fn from(nonce: Nonce) -> Self {
         match nonce {
-            Nonce::Nonce12(nonce) => Ipld::Bytes(nonce.to_vec()),
             Nonce::Nonce16(nonce) => Ipld::Bytes(nonce.to_vec()),
             Nonce::Custom(nonce) => Ipld::Bytes(nonce),
         }
@@ -213,10 +142,6 @@ impl TryFrom<Ipld> for Nonce {
     fn try_from(ipld: Ipld) -> Result<Self, Self::Error> {
         if let Ipld::Bytes(v) = ipld {
             match v.len() {
-                12 => Ok(Nonce::Nonce12(
-                    v.try_into()
-                        .expect("12 bytes because we checked in the match"),
-                )),
                 16 => Ok(Nonce::Nonce16(
                     v.try_into()
                         .expect("16 bytes because we checked in the match"),
@@ -236,7 +161,6 @@ impl Arbitrary for Nonce {
 
     fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
         prop_oneof![
-            any::<[u8; 12]>().prop_map(Nonce::Nonce12),
             any::<[u8; 16]>().prop_map(Nonce::Nonce16),
             any::<Vec<u8>>().prop_map(Nonce::Custom)
         ]
@@ -268,23 +192,13 @@ impl From<Nonce> for JsNonce {
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 impl JsNonce {
-    /// Generate a 96-bit, 12-byte nonce.
-    /// This is the minimum nonce size typically recommended.
-    ///
-    /// # Arguments
-    ///
-    /// * `salt` - A salt. This may be left empty, but is recommended to avoid collision.
-    pub fn generate_12(mut salt: Vec<u8>) -> JsNonce {
-        Nonce::generate_12(&mut salt).into()
-    }
-
     /// Generate a 128-bit, 16-byte nonce
     ///
     /// # Arguments
     ///
     /// * `salt` - A salt. This may be left empty, but is recommended to avoid collision.
-    pub fn generate_16(mut salt: Vec<u8>) -> JsNonce {
-        Nonce::generate_16(&mut salt).into()
+    pub fn generate_16() -> JsNonce {
+        Nonce::generate_16().into()
     }
 
     /// Directly lift a 12-byte `Uint8Array` into a [`JsNonce`]
@@ -316,24 +230,8 @@ mod test {
 
     // FIXME prop test with lots of inputs
     #[test]
-    fn ipld_roundtrip_12() {
-        let gen = Nonce::generate_12(&mut vec![]);
-        let ipld = Ipld::from(gen.clone());
-
-        let inner = if let Nonce::Nonce12(nonce) = gen {
-            Ipld::Bytes(nonce.to_vec())
-        } else {
-            panic!("No conversion!")
-        };
-
-        assert_eq!(ipld, inner);
-        assert_eq!(gen, ipld.try_into().unwrap());
-    }
-
-    // FIXME prop test with lots of inputs
-    #[test]
     fn ipld_roundtrip_16() {
-        let gen = Nonce::generate_16(&mut vec![]);
+        let gen = Nonce::generate_16();
         let ipld = Ipld::from(gen.clone());
 
         let inner = if let Nonce::Nonce16(nonce) = gen {
@@ -349,7 +247,7 @@ mod test {
     // FIXME prop test with lots of inputs
     // #[test]
     // fn ser_de() {
-    //     let gen = Nonce::generate_16(&mut vec![]);
+    //     let gen = Nonce::generate_16();
     //     let ser = serde_json::to_string(&gen).unwrap();
     //     let de = serde_json::from_str(&ser).unwrap();
 
