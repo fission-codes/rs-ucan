@@ -49,35 +49,35 @@ pub trait Envelope: Sized {
     fn try_from_ipld_envelope(
         ipld: Ipld,
     ) -> Result<Self, FromIpldError<<Self::Payload as TryFrom<Named<Ipld>>>::Error>> {
-        if let Ipld::List(list) = ipld {
-            if let [Ipld::Bytes(sig), Ipld::List(inner)] = list.as_slice() {
-                if let [Ipld::Bytes(varsig_header), Ipld::Map(btree)] = inner.as_slice() {
-                    if let (1, Some(Ipld::Map(inner))) = (
-                        btree.len(),
-                        btree.get(<Self::Payload as Capsule>::TAG.into()),
-                    ) {
-                        let payload = Self::Payload::try_from(Named(inner.clone()))
-                            .map_err(FromIpldError::CannotParsePayload)?;
+        let Ipld::List(list) = ipld else {
+            return Err(FromIpldError::InvalidSignatureContainer);
+        };
 
-                        let varsig_header = Self::VarsigHeader::try_from(varsig_header.as_slice())
-                            .map_err(|_| FromIpldError::CannotParseVarsigHeader)?;
+        let [Ipld::Bytes(sig), Ipld::List(inner)] = list.as_slice() else {
+            return Err(FromIpldError::InvalidSignatureContainer);
+        };
 
-                        let signature = <Self::DID as Did>::Signature::try_from(sig.as_slice())
-                            .map_err(|_| FromIpldError::CannotParseSignature)?;
+        let [Ipld::Bytes(varsig_header), Ipld::Map(btree)] = inner.as_slice() else {
+            return Err(FromIpldError::InvalidVarsigContainer);
+        };
 
-                        Ok(Self::construct(varsig_header, signature, payload))
-                    } else {
-                        Err(FromIpldError::InvalidPayloadCapsule)
-                    }
-                } else {
-                    Err(FromIpldError::InvalidVarsigContainer)
-                }
-            } else {
-                Err(FromIpldError::InvalidSignatureContainer)
-            }
-        } else {
-            Err(FromIpldError::InvalidSignatureContainer)
-        }
+        let (1, Some(Ipld::Map(inner))) = (
+            btree.len(),
+            btree.get(<Self::Payload as Capsule>::TAG.into()),
+        ) else {
+            return Err(FromIpldError::InvalidPayloadCapsule);
+        };
+
+        let payload = Self::Payload::try_from(Named(inner.clone()))
+            .map_err(FromIpldError::CannotParsePayload)?;
+
+        let varsig_header = Self::VarsigHeader::try_from(varsig_header.as_slice())
+            .map_err(|_| FromIpldError::CannotParseVarsigHeader)?;
+
+        let signature = <Self::DID as Did>::Signature::try_from(sig.as_slice())
+            .map_err(|_| FromIpldError::CannotParseSignature)?;
+
+        Ok(Self::construct(varsig_header, signature, payload))
     }
 
     fn varsig_encode<W: Write>(&self, mut w: W) -> Result<W, libipld_core::error::Error>
