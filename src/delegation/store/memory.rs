@@ -78,7 +78,7 @@ use web_time::SystemTime;
 pub struct MemoryStore<
     DID: did::Did + Ord = did::preset::Verifier,
     V: varsig::Header<C> = varsig::header::Preset,
-    C: Codec + TryFrom<u64> + Into<u64> = varsig::encoding::Preset,
+    C: Codec = varsig::encoding::Preset,
 > {
     inner: Arc<Mutex<MemoryStoreInner<DID, V, C>>>,
 }
@@ -87,16 +87,14 @@ pub struct MemoryStore<
 struct MemoryStoreInner<
     DID: did::Did + Ord = did::preset::Verifier,
     V: varsig::Header<C> = varsig::header::Preset,
-    C: Codec + TryFrom<u64> + Into<u64> = varsig::encoding::Preset,
+    C: Codec = varsig::encoding::Preset,
 > {
     ucans: BTreeMap<Cid, Arc<Delegation<DID, V, C>>>,
     index: BTreeMap<Option<DID>, BTreeMap<DID, BTreeSet<Cid>>>,
     revocations: BTreeSet<Cid>,
 }
 
-impl<DID: did::Did + Ord, V: varsig::Header<C>, C: Codec + TryFrom<u64> + Into<u64>>
-    MemoryStore<DID, V, C>
-{
+impl<DID: did::Did + Ord, V: varsig::Header<C>, C: Codec> MemoryStore<DID, V, C> {
     pub fn new() -> Self {
         Self::default()
     }
@@ -120,9 +118,7 @@ impl<DID: did::Did + Ord, V: varsig::Header<C>, C: Codec + TryFrom<u64> + Into<u
     }
 }
 
-impl<DID: did::Did + Ord, V: varsig::Header<C>, C: Codec + TryFrom<u64> + Into<u64>> Default
-    for MemoryStore<DID, V, C>
-{
+impl<DID: did::Did + Ord, V: varsig::Header<C>, C: Codec> Default for MemoryStore<DID, V, C> {
     fn default() -> Self {
         Self {
             inner: Default::default(),
@@ -130,9 +126,7 @@ impl<DID: did::Did + Ord, V: varsig::Header<C>, C: Codec + TryFrom<u64> + Into<u
     }
 }
 
-impl<DID: Did + Ord, V: varsig::Header<C>, C: Codec + TryFrom<u64> + Into<u64>> Default
-    for MemoryStoreInner<DID, V, C>
-{
+impl<DID: Did + Ord, V: varsig::Header<C>, C: Codec> Default for MemoryStoreInner<DID, V, C> {
     fn default() -> Self {
         MemoryStoreInner {
             ucans: BTreeMap::new(),
@@ -143,11 +137,8 @@ impl<DID: Did + Ord, V: varsig::Header<C>, C: Codec + TryFrom<u64> + Into<u64>> 
 }
 
 // FIXME check that UCAN is valid
-impl<
-        DID: Did + Ord + Clone,
-        V: varsig::Header<Enc> + Clone,
-        Enc: Codec + TryFrom<u64> + Into<u64>,
-    > Store<DID, V, Enc> for MemoryStore<DID, V, Enc>
+impl<DID: Did + Ord + Clone, V: varsig::Header<Enc> + Clone, Enc: Codec> Store<DID, V, Enc>
+    for MemoryStore<DID, V, Enc>
 where
     Named<Ipld>: From<delegation::Payload<DID>>,
     delegation::Payload<DID>: TryFrom<Named<Ipld>>,

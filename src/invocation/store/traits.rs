@@ -1,9 +1,9 @@
 use crate::{crypto::varsig, did::Did, invocation::Invocation};
 use libipld_core::{cid::Cid, codec::Codec};
-use std::sync::Arc;
+use std::{fmt::Debug, sync::Arc};
 
-pub trait Store<T, DID: Did, V: varsig::Header<C>, C: Codec + Into<u64> + TryFrom<u64>> {
-    type InvocationStoreError;
+pub trait Store<T, DID: Did, V: varsig::Header<C>, C: Codec> {
+    type InvocationStoreError: Debug;
 
     fn get(
         &self,
@@ -21,13 +21,8 @@ pub trait Store<T, DID: Did, V: varsig::Header<C>, C: Codec + Into<u64> + TryFro
     }
 }
 
-impl<
-        S: Store<T, DID, V, C>,
-        T,
-        DID: Did,
-        V: varsig::Header<C>,
-        C: Codec + Into<u64> + TryFrom<u64>,
-    > Store<T, DID, V, C> for &S
+impl<S: Store<T, DID, V, C>, T, DID: Did, V: varsig::Header<C>, C: Codec> Store<T, DID, V, C>
+    for &S
 {
     type InvocationStoreError = <S as Store<T, DID, V, C>>::InvocationStoreError;
 

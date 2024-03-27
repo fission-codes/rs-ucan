@@ -23,7 +23,7 @@ pub struct Agent<
     S: Store<DID, V, C>,
     DID: Did + Clone = did::preset::Verifier,
     V: varsig::Header<C> + Clone = varsig::header::Preset,
-    C: Codec + Into<u64> + TryFrom<u64> = varsig::encoding::Preset,
+    C: Codec = varsig::encoding::Preset,
 > where
     Ipld: Encode<C>,
     Payload<DID>: TryFrom<Named<Ipld>>,
@@ -39,12 +39,8 @@ pub struct Agent<
     _marker: PhantomData<(V, C)>,
 }
 
-impl<
-        S: Store<DID, V, C> + Clone,
-        DID: Did + Clone,
-        V: varsig::Header<C> + Clone,
-        C: Codec + TryFrom<u64> + Into<u64>,
-    > Agent<S, DID, V, C>
+impl<S: Store<DID, V, C> + Clone, DID: Did + Clone, V: varsig::Header<C> + Clone, C: Codec>
+    Agent<S, DID, V, C>
 where
     Ipld: Encode<C>,
     Payload<DID>: TryFrom<Named<Ipld>>,

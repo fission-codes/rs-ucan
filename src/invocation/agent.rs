@@ -37,7 +37,7 @@ pub struct Agent<
     T: ToCommand = ability::preset::Preset,
     DID: Did + Clone = did::preset::Verifier,
     V: varsig::Header<C> + Clone = varsig::header::Preset,
-    C: Codec + Into<u64> + TryFrom<u64> = varsig::encoding::Preset,
+    C: Codec = varsig::encoding::Preset,
 > where
     Ipld: Encode<C>,
     delegation::Payload<DID>: TryFrom<Named<Ipld>>,
@@ -67,9 +67,7 @@ where
     S: Store<T, DID, V, C>,
     D: delegation::store::Store<DID, V, C>,
     V: varsig::Header<C> + Clone,
-    C: Codec + Into<u64> + TryFrom<u64>,
-    <S as Store<T, DID, V, C>>::InvocationStoreError: fmt::Debug,
-    <D as delegation::store::Store<DID, V, C>>::DelegationStoreError: fmt::Debug,
+    C: Codec,
     delegation::Payload<DID>: TryFrom<Named<Ipld>>,
     Named<Ipld>: From<delegation::Payload<DID>>,
 {
@@ -291,16 +289,7 @@ pub enum Recipient<T> {
 }
 
 #[derive(Debug, Error, EnumAsInner)]
-pub enum ReceiveError<
-    T,
-    DID: Did,
-    D,
-    S: Store<T, DID, V, C>,
-    V: varsig::Header<C>,
-    C: Codec + TryFrom<u64> + Into<u64>,
-> where
-    <S as Store<T, DID, V, C>>::InvocationStoreError: fmt::Debug,
-{
+pub enum ReceiveError<T, DID: Did, D, S: Store<T, DID, V, C>, V: varsig::Header<C>, C: Codec> {
     #[error("couldn't find delegation: {0}")]
     DelegationNotFound(Cid),
 

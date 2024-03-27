@@ -39,7 +39,7 @@ impl<C: Into<u64>> From<Rs512Header<C>> for Vec<u8> {
     }
 }
 
-impl<C: Codec + Into<u64> + TryFrom<u64>> Header<C> for Rs512Header<C> {
+impl<C: Codec> Header<C> for Rs512Header<C> {
     type Signature = Signature;
     type Verifier = VerifyingKey;
 

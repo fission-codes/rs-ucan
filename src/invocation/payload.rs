@@ -366,9 +366,7 @@ where
     }
 }
 
-impl<'de, A: ParseAbility + Deserialize<'de>, DID: Did + Deserialize<'de>> Deserialize<'de>
-    for Payload<A, DID>
-{
+impl<'de, A: ParseAbility, DID: Did + Deserialize<'de>> Deserialize<'de> for Payload<A, DID> {
     fn deserialize<D>(deserializer: D) -> Result<Payload<A, DID>, D::Error>
     where
         D: de::Deserializer<'de>,
@@ -379,7 +377,7 @@ impl<'de, A: ParseAbility + Deserialize<'de>, DID: Did + Deserialize<'de>> Deser
             "iss", "sub", "aud", "cmd", "args", "prf", "nonce", "cause", "meta", "iat", "exp",
         ];
 
-        impl<'de, T: ParseAbility + Deserialize<'de>, DID: Did + Deserialize<'de>> Visitor<'de>
+        impl<'de, T: ParseAbility, DID: Did + Deserialize<'de>> Visitor<'de>
             for InvocationPayloadVisitor<T, DID>
         {
             type Value = Payload<T, DID>;
@@ -480,7 +478,7 @@ impl<'de, A: ParseAbility + Deserialize<'de>, DID: Did + Deserialize<'de>> Deser
 
                 let ability = <T as ParseAbility>::try_parse(cmd.as_str(), args).map_err(|e| {
                     de::Error::custom(format!(
-                        "Unable to parse ability field for {:?} becuase {:?}",
+                        "Unable to parse ability field for {:?} because {:?}",
                         cmd, e
                     ))
                 })?;
