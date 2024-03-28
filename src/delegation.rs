@@ -21,15 +21,14 @@ mod payload;
 pub use agent::Agent;
 pub use payload::*;
 
-use crate::ability::arguments::Named;
 use crate::{
+    ability::arguments::Named,
     capsule::Capsule,
     crypto::{signature::Envelope, varsig, Nonce},
     did::{self, Did},
     time::{TimeBoundError, Timestamp},
 };
-use libipld_core::link::Link;
-use libipld_core::{codec::Codec, ipld::Ipld};
+use libipld_core::{codec::Codec, ipld::Ipld, link::Link};
 use policy::Predicate;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -123,8 +122,8 @@ impl<DID: Did, V: varsig::Header<C>, C: Codec> Delegation<DID, V, C> {
     }
 
     /// Retrive the `expiration` of a [`Delegation`]
-    pub fn expiration(&self) -> &Option<Timestamp> {
-        &self.payload.expiration
+    pub fn expiration(&self) -> Option<&Timestamp> {
+        self.payload.expiration.as_ref()
     }
 
     pub fn check_time(&self, now: SystemTime) -> Result<(), TimeBoundError> {
