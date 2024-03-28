@@ -45,7 +45,7 @@ jobs:
         with:
           args: --all -- --check
           command: fmt
-          toolchain: unstable
+          toolchain: ${{ matrix.rust-toolchain }}
 
       - name: Run Linter
         uses: actions-rs/cargo@v1
