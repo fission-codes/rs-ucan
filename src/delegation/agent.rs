@@ -63,7 +63,7 @@ where
         command: String,
         new_policy: Vec<Predicate>,
         metadata: BTreeMap<String, Ipld>,
-        expiration: Timestamp,
+        expiration: Option<Timestamp>,
         not_before: Option<Timestamp>,
         now: SystemTime,
         varsig_header: V,
@@ -96,8 +96,8 @@ where
             command,
             metadata,
             nonce,
-            expiration: expiration.into(),
-            not_before: not_before.map(Into::into),
+            expiration,
+            not_before,
             policy,
         };
 
