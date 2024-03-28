@@ -160,7 +160,7 @@ where
         let mut tx = self.lock();
 
         tx.index
-            .entry(delegation.subject().clone())
+            .entry(delegation.subject().cloned())
             .or_default()
             .entry(delegation.audience().clone())
             .or_default()
@@ -251,7 +251,7 @@ where
                         let issuer = delegation.issuer().clone();
 
                         // Hit a root delegation, AKA base case
-                        if &Some(issuer.clone()) == delegation.subject() {
+                        if Some(&issuer) == delegation.subject() {
                             break 'outer;
                         }
 

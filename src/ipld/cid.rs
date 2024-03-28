@@ -130,8 +130,9 @@ impl Arbitrary for Newtype {
         // Very much faking it
         any::<([u8; 32], SomeMultihash, SomeCodec)>()
             .prop_map(|(hash_bytes, hasher, codec)| {
-                let multihash = MultihashGeneric::wrap(hasher.0.into(), &hash_bytes.as_slice())
-                    .expect("Sha2_256 should always successfully encode a hash");
+                let multihash =
+                    multihash::MultihashGeneric::wrap(hasher.0.into(), &hash_bytes.as_slice())
+                        .expect("Sha2_256 should always successfully encode a hash");
 
                 let cid = Cid::new_v1(codec.0.into(), multihash);
                 Newtype { cid }
