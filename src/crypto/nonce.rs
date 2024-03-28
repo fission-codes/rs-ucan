@@ -31,7 +31,6 @@ impl PartialEq for Nonce {
             (Nonce::Custom(a), Nonce::Custom(b)) => a == b,
             (Nonce::Custom(a), Nonce::Nonce16(b)) => a.as_slice() == b,
             (Nonce::Nonce16(a), Nonce::Custom(b)) => a == b.as_slice(),
-            _ => false,
         }
     }
 }

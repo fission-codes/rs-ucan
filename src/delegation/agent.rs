@@ -68,7 +68,6 @@ where
         now: SystemTime,
         varsig_header: V,
     ) -> Result<Delegation<DID, V, C>, DelegateError<S::Error>> {
-        let mut salt = self.did.clone().to_string().into_bytes();
         let nonce = Nonce::generate_16();
 
         let (subject, policy) = match subject {

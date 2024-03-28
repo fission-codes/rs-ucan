@@ -10,8 +10,8 @@ use libipld_core::codec::Encode;
 use libipld_core::ipld::Ipld;
 use libipld_core::{cid::Cid, codec::Codec};
 use nonempty::NonEmpty;
-use std::borrow::Cow;
 use std::{
+    borrow::Cow,
     collections::{BTreeMap, BTreeSet},
     convert::Infallible,
     sync::{Arc, Mutex, MutexGuard},
@@ -160,7 +160,7 @@ where
         let mut tx = self.lock();
 
         tx.index
-            .entry(delegation.subject().clone())
+            .entry(delegation.subject().cloned())
             .or_default()
             .entry(delegation.audience().clone())
             .or_default()
@@ -181,7 +181,7 @@ where
         aud: &DID,
         subject: &DID,
         command: &str,
-        policy: Vec<Predicate>, // FIXME
+        policy: Vec<Predicate>,
         now: SystemTime,
     ) -> Result<Option<NonEmpty<(Cid, Arc<Delegation<DID, V, Enc>>)>>, Self::Error> {
         let blank_set = BTreeSet::new();
@@ -251,7 +251,7 @@ where
                         let issuer = delegation.issuer().clone();
 
                         // Hit a root delegation, AKA base case
-                        if &Some(issuer.clone()) == delegation.subject() {
+                        if Some(&issuer) == delegation.subject() {
                             break 'outer;
                         }
 
