@@ -1,4 +1,5 @@
 use crate::ability::arguments::Named;
+use crate::crypto::varsig::Header;
 use crate::{capsule::Capsule, crypto::varsig, did::Did};
 use libipld_core::{
     cid::Cid,
@@ -10,6 +11,7 @@ use libipld_core::{
 use signature::SignatureEncoding;
 use signature::Verifier;
 use std::collections::BTreeMap;
+use std::io::Write;
 use thiserror::Error;
 
 pub trait Envelope: Sized {
@@ -30,60 +32,61 @@ pub trait Envelope: Sized {
     ) -> Self;
 
     fn to_ipld_envelope(&self) -> Ipld {
-        let inner_args: Named<Ipld> = self.payload().clone().into();
-        let inner_ipld: Ipld = inner_args.into();
-
-        let wrapped_payload: Ipld =
-            BTreeMap::from_iter([(Self::Payload::TAG.into(), inner_ipld)]).into();
-
-        let header_bytes: Vec<u8> = (*self.varsig_header()).clone().into();
+        let wrapped_payload = Self::wrap_payload(self.payload().clone());
+        let header_bytes: Vec<u8> = self.varsig_header().clone().into();
         let header: Ipld = vec![header_bytes.into(), wrapped_payload].into();
         let sig_bytes: Ipld = self.signature().to_vec().into();
 
         vec![sig_bytes.into(), header].into()
     }
 
+    fn wrap_payload(payload: Self::Payload) -> Ipld {
+        let inner_args: Named<Ipld> = payload.into();
+        let inner_ipld: Ipld = inner_args.into();
+        BTreeMap::from_iter([(Self::Payload::TAG.into(), inner_ipld)]).into()
+    }
+
     fn try_from_ipld_envelope(
         ipld: Ipld,
     ) -> Result<Self, FromIpldError<<Self::Payload as TryFrom<Named<Ipld>>>::Error>> {
-        if let Ipld::List(list) = ipld {
-            if let [Ipld::Bytes(sig), Ipld::List(inner)] = list.as_slice() {
-                if let [Ipld::Bytes(varsig_header), Ipld::Map(btree)] = inner.as_slice() {
-                    if let (1, Some(Ipld::Map(inner))) = (
-                        btree.len(),
-                        btree.get(<Self::Payload as Capsule>::TAG.into()),
-                    ) {
-                        let payload = Self::Payload::try_from(Named(inner.clone()))
-                            .map_err(FromIpldError::CannotParsePayload)?;
+        let Ipld::List(list) = ipld else {
+            return Err(FromIpldError::InvalidSignatureContainer);
+        };
 
-                        let varsig_header = Self::VarsigHeader::try_from(varsig_header.as_slice())
-                            .map_err(|_| FromIpldError::CannotParseVarsigHeader)?;
+        let [Ipld::Bytes(sig), Ipld::List(inner)] = list.as_slice() else {
+            return Err(FromIpldError::InvalidSignatureContainer);
+        };
 
-                        let signature = <Self::DID as Did>::Signature::try_from(sig.as_slice())
-                            .map_err(|_| FromIpldError::CannotParseSignature)?;
+        let [Ipld::Bytes(varsig_header), Ipld::Map(btree)] = inner.as_slice() else {
+            return Err(FromIpldError::InvalidVarsigContainer);
+        };
 
-                        Ok(Self::construct(varsig_header, signature, payload))
-                    } else {
-                        Err(FromIpldError::InvalidPayloadCapsule)
-                    }
-                } else {
-                    Err(FromIpldError::InvalidVarsigContainer)
-                }
-            } else {
-                Err(FromIpldError::InvalidSignatureContainer)
-            }
-        } else {
-            Err(FromIpldError::InvalidSignatureContainer)
-        }
+        let (1, Some(Ipld::Map(inner))) = (
+            btree.len(),
+            btree.get(<Self::Payload as Capsule>::TAG.into()),
+        ) else {
+            return Err(FromIpldError::InvalidPayloadCapsule);
+        };
+
+        let payload = Self::Payload::try_from(Named(inner.clone()))
+            .map_err(FromIpldError::CannotParsePayload)?;
+
+        let varsig_header = Self::VarsigHeader::try_from(varsig_header.as_slice())
+            .map_err(|_| FromIpldError::CannotParseVarsigHeader)?;
+
+        let signature = <Self::DID as Did>::Signature::try_from(sig.as_slice())
+            .map_err(|_| FromIpldError::CannotParseSignature)?;
+
+        Ok(Self::construct(varsig_header, signature, payload))
     }
 
-    fn varsig_encode(self, w: &mut Vec<u8>) -> Result<(), libipld_core::error::Error>
+    fn varsig_encode<W: Write>(&self, mut w: W) -> Result<W, libipld_core::error::Error>
     where
-        Ipld: Encode<Self::Encoder> + From<Self>,
+        Ipld: Encode<Self::Encoder>,
     {
-        let codec = varsig::header::Header::codec(self.varsig_header()).clone();
-        let ipld = Ipld::from(self);
-        ipld.encode(codec, w)
+        let codec = self.varsig_header().codec().clone();
+        self.to_ipld_envelope().encode(codec, &mut w)?;
+        Ok(w)
     }
 
     /// Attempt to sign some payload with a given signer.
@@ -132,14 +135,9 @@ pub trait Envelope: Sized {
         Ipld: Encode<Self::Encoder>,
         Named<Ipld>: From<Self::Payload>,
     {
-        let ipld: Ipld = BTreeMap::from_iter([(
-            Self::Payload::TAG.into(),
-            Named::<Ipld>::from(payload.clone()).into(),
-        )])
-        .into();
-
+        let ipld = Self::wrap_payload(payload.clone());
         let mut buffer = vec![];
-        ipld.encode(*varsig::header::Header::codec(&varsig_header), &mut buffer)
+        ipld.encode(*varsig_header.codec(), &mut buffer)
             .map_err(SignError::PayloadEncodingError)?;
 
         let signature =
@@ -188,11 +186,9 @@ pub trait Envelope: Sized {
     where
         Ipld: Encode<Self::Encoder>,
     {
-        let codec = varsig::header::Header::codec(self.varsig_header()).clone();
-        let mut ipld_buffer = vec![];
-        self.to_ipld_envelope().encode(codec, &mut ipld_buffer)?;
+        let encoded = self.varsig_encode(Vec::new())?;
+        let multihash = Code::Sha2_256.digest(&encoded);
 
-        let multihash = Code::Sha2_256.digest(&ipld_buffer);
         Ok(Cid::new_v1(
             varsig::header::Header::codec(self.varsig_header())
                 .clone()

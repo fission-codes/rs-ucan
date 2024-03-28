@@ -58,57 +58,47 @@ where
     pub fn delegate(
         &self,
         audience: DID,
-        subject: &DID,
+        subject: Option<&DID>,
         via: Option<DID>,
         command: String,
         new_policy: Vec<Predicate>,
         metadata: BTreeMap<String, Ipld>,
-        expiration: Timestamp,
+        expiration: Option<Timestamp>,
         not_before: Option<Timestamp>,
         now: SystemTime,
         varsig_header: V,
-    ) -> Result<Delegation<DID, V, C>, DelegateError<S::DelegationStoreError>> {
+    ) -> Result<Delegation<DID, V, C>, DelegateError<S::Error>> {
         let mut salt = self.did.clone().to_string().into_bytes();
         let nonce = Nonce::generate_16();
 
-        if *subject == self.did {
-            let payload: Payload<DID> = Payload {
-                issuer: self.did.clone(),
-                audience,
-                subject: Some(subject.clone()),
-                via,
-                command,
-                metadata,
-                nonce,
-                expiration: expiration.into(),
-                not_before: not_before.map(Into::into),
-                policy: new_policy,
-            };
+        let (subject, policy) = match subject {
+            Some(subject) if *subject == self.did => (Some(subject.clone()), new_policy),
+            None => (None, new_policy),
+            Some(subject) => {
+                let proofs = &self
+                    .store
+                    .get_chain(&self.did, &subject, &command, vec![], now)
+                    .map_err(DelegateError::StoreError)?
+                    .ok_or(DelegateError::ProofsNotFound)?;
+                let to_delegate = proofs.first().1.payload();
 
-            return Ok(Delegation::try_sign(&self.signer, varsig_header, payload).expect("FIXME"));
-        }
-
-        let proofs = &self
-            .store
-            .get_chain(&self.did, &subject, &command, vec![], now)
-            .map_err(DelegateError::StoreError)?
-            .ok_or(DelegateError::ProofsNotFound)?;
-        let to_delegate = proofs.first().1.payload();
-
-        let mut policy = to_delegate.policy.clone();
-        policy.append(&mut new_policy.clone());
+                let mut policy = to_delegate.policy.clone();
+                policy.extend(new_policy);
+                (Some(subject.clone()), policy)
+            }
+        };
 
         let payload: Payload<DID> = Payload {
             issuer: self.did.clone(),
             audience,
-            subject: Some(subject.clone()),
+            subject,
             via,
             command,
-            policy,
             metadata,
             nonce,
-            expiration: expiration.into(),
-            not_before: not_before.map(Into::into),
+            expiration,
+            not_before,
+            policy,
         };
 
         Ok(Delegation::try_sign(&self.signer, varsig_header, payload).expect("FIXME"))
@@ -118,7 +108,7 @@ where
         &self,
         cid: Cid, // FIXME remove and generate from the capsule header?
         delegation: Delegation<DID, V, C>,
-    ) -> Result<(), ReceiveError<S::DelegationStoreError, DID>> {
+    ) -> Result<(), ReceiveError<S::Error, DID>> {
         if self.store.get(&cid).is_ok() {
             return Ok(());
         }

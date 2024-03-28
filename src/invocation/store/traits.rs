@@ -3,20 +3,13 @@ use libipld_core::{cid::Cid, codec::Codec};
 use std::{fmt::Debug, sync::Arc};
 
 pub trait Store<T, DID: Did, V: varsig::Header<C>, C: Codec> {
-    type InvocationStoreError: Debug;
+    type Error: Debug;
 
-    fn get(
-        &self,
-        cid: Cid,
-    ) -> Result<Option<Arc<Invocation<T, DID, V, C>>>, Self::InvocationStoreError>;
+    fn get(&self, cid: Cid) -> Result<Option<Arc<Invocation<T, DID, V, C>>>, Self::Error>;
 
-    fn put(
-        &self,
-        cid: Cid,
-        invocation: Invocation<T, DID, V, C>,
-    ) -> Result<(), Self::InvocationStoreError>;
+    fn put(&self, cid: Cid, invocation: Invocation<T, DID, V, C>) -> Result<(), Self::Error>;
 
-    fn has(&self, cid: Cid) -> Result<bool, Self::InvocationStoreError> {
+    fn has(&self, cid: Cid) -> Result<bool, Self::Error> {
         Ok(self.get(cid).is_ok())
     }
 }
@@ -24,23 +17,13 @@ pub trait Store<T, DID: Did, V: varsig::Header<C>, C: Codec> {
 impl<S: Store<T, DID, V, C>, T, DID: Did, V: varsig::Header<C>, C: Codec> Store<T, DID, V, C>
     for &S
 {
-    type InvocationStoreError = <S as Store<T, DID, V, C>>::InvocationStoreError;
+    type Error = <S as Store<T, DID, V, C>>::Error;
 
-    fn get(
-        &self,
-        cid: Cid,
-    ) -> Result<
-        Option<Arc<Invocation<T, DID, V, C>>>,
-        <S as Store<T, DID, V, C>>::InvocationStoreError,
-    > {
+    fn get(&self, cid: Cid) -> Result<Option<Arc<Invocation<T, DID, V, C>>>, Self::Error> {
         (**self).get(cid)
     }
 
-    fn put(
-        &self,
-        cid: Cid,
-        invocation: Invocation<T, DID, V, C>,
-    ) -> Result<(), <S as Store<T, DID, V, C>>::InvocationStoreError> {
+    fn put(&self, cid: Cid, invocation: Invocation<T, DID, V, C>) -> Result<(), Self::Error> {
         (**self).put(cid, invocation)
     }
 }
