@@ -82,8 +82,8 @@ impl<DID: Did, V: varsig::Header<C>, C: Codec> Delegation<DID, V, C> {
     }
 
     /// Retrive the `subject` of a [`Delegation`]
-    pub fn subject(&self) -> &Option<DID> {
-        &self.payload.subject
+    pub fn subject(&self) -> Option<&DID> {
+        self.payload.subject.as_ref()
     }
 
     /// Retrive the `audience` of a [`Delegation`]
@@ -92,8 +92,8 @@ impl<DID: Did, V: varsig::Header<C>, C: Codec> Delegation<DID, V, C> {
     }
 
     /// Retrieve the `via` of a [`Delegation`]
-    pub fn via(&self) -> &Option<DID> {
-        &self.payload.via
+    pub fn via(&self) -> Option<&DID> {
+        self.payload.via.as_ref()
     }
 
     /// Retrieve the `command` of a [`Delegation`]
