@@ -180,7 +180,7 @@ impl<A, DID: Did> Payload<A, DID> {
                     return Err(ValidationError::MisalignedIssAud.into());
                 }
 
-                if let Subject::Specific(proof_subject) = &proof.subject {
+                if let Subject::Known(proof_subject) = &proof.subject {
                     if self.subject != *proof_subject {
                         return Err(ValidationError::InvalidSubject.into());
                     }

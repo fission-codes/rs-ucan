@@ -72,11 +72,11 @@ where
         let nonce = Nonce::generate_16();
 
         let (subject, policy) = match subject {
-            Subject::Specific(subject) if *subject == self.did => {
-                (Subject::Specific(subject.clone()), new_policy)
+            Subject::Known(subject) if *subject == self.did => {
+                (Subject::Known(subject.clone()), new_policy)
             }
             Subject::Any => (Subject::Any, new_policy),
-            Subject::Specific(subject) => {
+            Subject::Known(subject) => {
                 let proofs = &self
                     .store
                     .get_chain(&self.did, &subject, &command, vec![], now)
@@ -86,7 +86,7 @@ where
 
                 let mut policy = to_delegate.policy.clone();
                 policy.extend(new_policy);
-                (Subject::Specific(subject.clone()), policy)
+                (Subject::Known(subject.clone()), policy)
             }
         };
 

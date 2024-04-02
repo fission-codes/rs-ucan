@@ -191,7 +191,7 @@ where
         let all_powerlines = tx.index.get(&Subject::Any).unwrap_or(&blank_map);
         let all_aud_for_subject = tx
             .index
-            .get(&Subject::Specific(subject.clone()))
+            .get(&Subject::Known(subject.clone()))
             .unwrap_or(&blank_map);
 
         let powerline_candidates = all_powerlines.get(aud).unwrap_or(&blank_set);
@@ -255,7 +255,7 @@ where
                         let issuer = delegation.issuer().clone();
 
                         // Hit a root delegation, AKA base case
-                        if Subject::Specific(issuer.clone()) == *delegation.subject() {
+                        if Subject::Known(issuer.clone()) == *delegation.subject() {
                             break 'outer;
                         }
 
@@ -526,7 +526,7 @@ mod tests {
                 &bob_signer,
                 varsig_header.clone(),
                 crate::delegation::Required {
-                    subject: crate::delegation::Subject::Specific(alice.clone()),
+                    subject: crate::delegation::Subject::Known(alice.clone()),
                     issuer: bob.clone(),
                     audience: carol.clone(),
                     command: "/".into(),
@@ -582,7 +582,7 @@ mod tests {
                 &bob_signer,
                 varsig_header.clone(),
                 crate::delegation::Required {
-                    subject: crate::delegation::Subject::Specific(alice.clone()),
+                    subject: crate::delegation::Subject::Known(alice.clone()),
                     issuer: bob.clone(),
                     audience: carol.clone(),
                     command: "/test/me".into(),
@@ -645,7 +645,7 @@ mod tests {
                 &carol_signer,
                 varsig_header.clone(),
                 crate::delegation::Required {
-                    subject: crate::delegation::Subject::Specific(alice.clone()),
+                    subject: crate::delegation::Subject::Known(alice.clone()),
                     issuer: carol.clone(),
                     audience: dan.clone(),
                     command: "/test/me".into(),
@@ -718,7 +718,7 @@ mod tests {
                 &alice_signer,
                 varsig_header.clone(),
                 crate::delegation::Required {
-                    subject: crate::delegation::Subject::Specific(alice.clone()),
+                    subject: crate::delegation::Subject::Known(alice.clone()),
                     issuer: alice.clone(),
                     audience: bob.clone(),
                     command: "/".into(),
@@ -802,7 +802,7 @@ mod tests {
                 &alice_signer,
                 varsig_header.clone(),
                 crate::delegation::Required {
-                    subject: crate::delegation::Subject::Specific(alice.clone()),
+                    subject: crate::delegation::Subject::Known(alice.clone()),
                     issuer: alice.clone(),
                     audience: bob.clone(),
                     command: "/".into(),

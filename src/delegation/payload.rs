@@ -197,7 +197,7 @@ impl<DID: Did> Payload<DID> {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd)]
 pub enum Subject<DID> {
-    Specific(DID), // FIXME Known? also functor instacne
+    Known(DID),
     Any,
 }
 
@@ -205,9 +205,9 @@ impl<DID: Ord> Ord for Subject<DID> {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         match (self, other) {
             (Subject::Any, Subject::Any) => core::cmp::Ordering::Equal,
-            (Subject::Any, Subject::Specific(_)) => core::cmp::Ordering::Less,
-            (Subject::Specific(_), Subject::Any) => core::cmp::Ordering::Greater,
-            (Subject::Specific(a), Subject::Specific(b)) => a.cmp(b),
+            (Subject::Any, Subject::Known(_)) => core::cmp::Ordering::Less,
+            (Subject::Known(_), Subject::Any) => core::cmp::Ordering::Greater,
+            (Subject::Known(a), Subject::Known(b)) => a.cmp(b),
         }
     }
 }
@@ -245,7 +245,7 @@ where
                 "sub" => {
                     subject = Some(match ipld {
                         Ipld::Null => Subject::Any,
-                        Ipld::String(s) => Subject::Specific(
+                        Ipld::String(s) => Subject::Known(
                             DID::from_str(s.as_str()).map_err(ParseError::DidParseError)?,
                         ),
                         bad => return Err(ParseError::WrongTypeForField("sub".to_string(), bad)),
@@ -424,7 +424,7 @@ impl<DID: Did> From<Payload<DID>> for Named<Ipld> {
             ),
         ]);
 
-        if let Subject::Specific(subject) = payload.subject {
+        if let Subject::Known(subject) = payload.subject {
             args.insert("sub".to_string(), Ipld::String(subject.to_string()));
         } else {
             args.insert("sub".to_string(), Ipld::Null);
@@ -487,7 +487,7 @@ where
                     // FIXME use from instcane
                     let subject = match maybe_subject {
                         None => Subject::Any,
-                        Some(s) => Subject::Specific(s),
+                        Some(s) => Subject::Known(s),
                     };
 
                     Payload {
@@ -565,7 +565,7 @@ mod tests {
 
             // Optional Fields
             match (payload.subject, named.get("sub")) {
-                (Subject::Specific(sub), Some(Ipld::String(s))) => {
+                (Subject::Known(sub), Some(Ipld::String(s))) => {
                     prop_assert_eq!(&sub.to_string(), s);
                 }
                 (Subject::Any, Some(Ipld::Null)) => prop_assert!(true),

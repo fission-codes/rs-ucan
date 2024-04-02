@@ -665,7 +665,7 @@ mod tests {
                 &dnslink_signer,
                 varsig_header.clone(),
                 crate::delegation::Required {
-                    subject: crate::delegation::Subject::Specific(dnslink.clone()),
+                    subject: crate::delegation::Subject::Known(dnslink.clone()),
                     issuer: dnslink.clone(),
                     audience: account.clone(),
                     command: "/".into(),
