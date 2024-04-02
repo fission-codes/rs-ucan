@@ -37,6 +37,7 @@ use libipld_core::{
 use policy::Predicate;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::marker::PhantomData;
 use web_time::SystemTime;
 
 /// A [`Delegation`] is a signed delegation [`Payload`]
@@ -51,7 +52,7 @@ pub struct Delegation<
     pub varsig_header: V,
     pub payload: Payload<DID>,
     pub signature: DID::Signature,
-    _marker: std::marker::PhantomData<C>,
+    _marker: PhantomData<C>,
 }
 
 pub struct DelegationRequired<
@@ -64,7 +65,7 @@ pub struct DelegationRequired<
     pub audience: DID,
     pub command: String,
 
-    pub codec: C,
+    pub codec: PhantomData<C>,
     pub varsig_header: V,
     pub signer: DID::Signer,
 }
@@ -74,21 +75,21 @@ pub struct DelegationBuilder<
     V: varsig::Header<C> = varsig::header::Preset,
     C: Codec = varsig::encoding::Preset,
 > {
-    pub subject: Subject<DID>,
-    pub issuer: DID,
-    pub audience: DID,
-    pub command: String,
+    subject: Subject<DID>,
+    issuer: DID,
+    audience: DID,
+    command: String,
 
-    pub codec: C,
-    pub varsig_header: V,
-    pub signer: DID::Signer,
+    codec: PhantomData<C>,
+    varsig_header: V,
+    signer: DID::Signer,
 
-    pub via: Option<DID>,
-    pub policy: Vec<Predicate>,
-    pub metadata: BTreeMap<String, Ipld>,
-    pub nonce: Option<Nonce>,
-    pub expiration: Option<Timestamp>,
-    pub not_before: Option<Timestamp>,
+    via: Option<DID>,
+    policy: Vec<Predicate>,
+    metadata: BTreeMap<String, Ipld>,
+    nonce: Option<Nonce>,
+    expiration: Option<Timestamp>,
+    not_before: Option<Timestamp>,
 }
 
 impl<DID: Did + Clone, V: varsig::Header<C> + Clone, C: Codec> DelegationRequired<DID, V, C>
@@ -122,7 +123,6 @@ where
         self.to_builder().try_finalize()
     }
 
-    /// Set the `via` field of the [`Delegation`]
     pub fn with_via(self, via: DID) -> DelegationBuilder<DID, V, C> {
         let builder = self.to_builder();
         builder.with_via(via)
@@ -238,7 +238,7 @@ impl<DID: Did, V: varsig::Header<C>, C: Codec> Delegation<DID, V, C> {
             varsig_header,
             payload,
             signature,
-            _marker: std::marker::PhantomData,
+            _marker: PhantomData,
         }
     }
 
@@ -316,7 +316,7 @@ where
             varsig_header,
             payload,
             signature,
-            _marker: std::marker::PhantomData,
+            _marker: PhantomData,
         }
     }
 
@@ -397,7 +397,7 @@ mod tests {
                 command: "/".to_string(),
 
                 signer: alice_signer,
-                codec: encoding::Preset::DagCbor,
+                codec: PhantomData,
                 varsig_header: header::Preset::EdDsa(header::EdDsaHeader {
                     codec: encoding::Preset::DagCbor,
                 }),
@@ -427,7 +427,7 @@ mod tests {
                 command: "/".to_string(),
 
                 signer: alice_signer,
-                codec: encoding::Preset::DagCbor,
+                codec: PhantomData,
                 varsig_header: header::Preset::EdDsa(header::EdDsaHeader {
                     codec: encoding::Preset::DagCbor,
                 }),
