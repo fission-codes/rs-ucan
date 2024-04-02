@@ -484,15 +484,8 @@ where
                     policy,
                     via,
                 )| {
-                    // FIXME use from instcane
-                    let subject = match maybe_subject {
-                        None => Subject::Any,
-                        Some(s) => Subject::Known(s),
-                    };
-
                     Payload {
                         issuer,
-                        subject,
                         audience,
                         command,
                         policy,
@@ -501,6 +494,10 @@ where
                         expiration,
                         not_before,
                         via,
+                        subject: match maybe_subject {
+                            None => Subject::Any,
+                            Some(s) => Subject::Known(s),
+                        },
                     }
                 },
             )
