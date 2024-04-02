@@ -166,16 +166,16 @@ where
             subject: self.subject,
             issuer: self.issuer,
             audience: self.audience,
-            via: None,
+            via: self.via,
 
             command: self.command,
-            policy: vec![],
+            policy: self.policy,
 
-            nonce: Nonce::generate_16(),
-            metadata: Default::default(),
+            nonce: self.nonce.unwrap_or(Nonce::generate_16()),
+            metadata: self.metadata,
 
-            expiration: None,
-            not_before: None,
+            expiration: self.expiration,
+            not_before: self.not_before,
         };
 
         Delegation::try_sign(&self.signer, self.varsig_header, payload)
@@ -405,9 +405,52 @@ mod tests {
         }
 
         #[test_log::test]
-        fn test_finalize_always_works() -> TestResult {
+        fn test_finalize() -> TestResult {
             let delegation = fixture().try_finalize();
             assert_matches!(delegation, Ok(_));
+            Ok(())
+        }
+
+        #[test_log::test]
+        fn test_finalize_with_metadata() -> TestResult {
+            let meta = BTreeMap::from_iter([("foo".into(), 123.into())]);
+            let delegation = fixture().with_metadata(meta.clone()).try_finalize()?;
+            assert_eq!(delegation.metadata(), &meta);
+            Ok(())
+        }
+
+        #[test_log::test]
+        fn test_finalize_with_via() -> TestResult {
+            let (alice, _) = gen_did();
+            let delegation = fixture().with_via(alice.clone()).try_finalize()?;
+            assert_eq!(delegation.via(), Some(alice).as_ref());
+            Ok(())
+        }
+
+        #[test_log::test]
+        fn test_finalize_with_policy() -> TestResult {
+            let pred = Predicate::Equal(FromStr::from_str(".foo")?, 123.into());
+            let delegation = fixture().with_policy(vec![pred.clone()]).try_finalize()?;
+
+            assert_eq!(delegation.policy(), &vec![pred]);
+            Ok(())
+        }
+
+        #[test_log::test]
+        fn test_finalize_with_expiration() -> TestResult {
+            let exp = Timestamp::now();
+            let delegation = fixture().with_expiration(exp.clone()).try_finalize()?;
+
+            assert_eq!(delegation.expiration(), Some(&exp));
+            Ok(())
+        }
+
+        #[test_log::test]
+        fn test_finalize_with_not_before() -> TestResult {
+            let nbf = Timestamp::now();
+            let delegation = fixture().with_not_before(nbf.clone()).try_finalize()?;
+
+            assert_eq!(delegation.not_before(), Some(&nbf));
             Ok(())
         }
     }
