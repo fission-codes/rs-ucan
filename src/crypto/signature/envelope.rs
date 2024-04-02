@@ -89,29 +89,6 @@ pub trait Envelope: Sized {
         Ok(w)
     }
 
-    /// Attempt to sign some payload with a given signer.
-    ///
-    /// # Arguments
-    ///
-    /// * `signer` - The signer to use to sign the payload.
-    /// * `payload` - The payload to sign.
-    ///
-    /// # Errors
-    ///
-    /// * [`SignError`] - the payload can't be encoded or the signature fails.
-    // FIXME ported
-    fn try_sign(
-        signer: &<Self::DID as Did>::Signer,
-        varsig_header: Self::VarsigHeader,
-        payload: Self::Payload,
-    ) -> Result<Self, SignError>
-    where
-        Ipld: Encode<Self::Encoder>,
-        Named<Ipld>: From<Self::Payload>,
-    {
-        Self::try_sign_generic(signer, varsig_header, payload)
-    }
-
     /// Attempt to sign some payload with a given signer and specific codec.
     ///
     /// # Arguments
@@ -126,7 +103,7 @@ pub trait Envelope: Sized {
     ///
     /// # Example
     ///
-    fn try_sign_generic(
+    fn try_sign(
         signer: &<Self::DID as Did>::Signer,
         varsig_header: Self::VarsigHeader,
         payload: Self::Payload,

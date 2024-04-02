@@ -2,13 +2,13 @@ use libipld_core::codec::{Codec, Encode};
 use signature::Verifier;
 use thiserror::Error;
 
-pub trait Header<Enc: Codec>: for<'a> TryFrom<&'a [u8]> + Into<Vec<u8>> {
+pub trait Header<C: Codec>: for<'a> TryFrom<&'a [u8]> + Into<Vec<u8>> {
     type Signature: signature::SignatureEncoding;
     type Verifier: signature::Verifier<Self::Signature>;
 
-    fn codec(&self) -> &Enc;
+    fn codec(&self) -> &C;
 
-    fn encode_payload<T: Encode<Enc>, Buf: std::io::Write>(
+    fn encode_payload<T: Encode<C>, Buf: std::io::Write>(
         &self,
         payload: T,
         buffer: &mut Buf,
@@ -16,7 +16,7 @@ pub trait Header<Enc: Codec>: for<'a> TryFrom<&'a [u8]> + Into<Vec<u8>> {
         payload.encode(Self::codec(self).clone(), buffer)
     }
 
-    fn try_verify<'a, T: Encode<Enc>>(
+    fn try_verify<'a, T: Encode<C>>(
         &self,
         verifier: &'a Self::Verifier,
         signature: &'a Self::Signature,
