@@ -96,7 +96,7 @@ impl<DID: Did + Clone, V: varsig::Header<C> + Clone, C: Codec> DelegationRequire
 where
     Ipld: Encode<C>,
 {
-    pub fn to_builder(self) -> DelegationBuilder<DID, V, C> {
+    pub fn into_builder(self) -> DelegationBuilder<DID, V, C> {
         DelegationBuilder {
             subject: self.subject,
             issuer: self.issuer,
@@ -115,50 +115,13 @@ where
             not_before: None,
         }
     }
-
-    pub fn try_finalize(self) -> Result<Delegation<DID, V, C>, crate::crypto::signature::SignError>
-    where
-        <DID as FromStr>::Err: std::fmt::Debug,
-    {
-        self.to_builder().try_finalize()
-    }
-
-    pub fn with_via(self, via: DID) -> DelegationBuilder<DID, V, C> {
-        let builder = self.to_builder();
-        builder.with_via(via)
-    }
-
-    pub fn with_policy(self, policy: Vec<Predicate>) -> DelegationBuilder<DID, V, C> {
-        let builder = self.to_builder();
-        builder.with_policy(policy)
-    }
-
-    pub fn with_nonce(self, nonce: Nonce) -> DelegationBuilder<DID, V, C> {
-        let builder = self.to_builder();
-        builder.with_nonce(nonce)
-    }
-
-    pub fn with_metadata(self, metadata: BTreeMap<String, Ipld>) -> DelegationBuilder<DID, V, C> {
-        let builder = self.to_builder();
-        builder.with_metadata(metadata)
-    }
-
-    pub fn with_expiration(self, expiration: Timestamp) -> DelegationBuilder<DID, V, C> {
-        let builder = self.to_builder();
-        builder.with_expiration(expiration)
-    }
-
-    pub fn with_not_before(self, not_before: Timestamp) -> DelegationBuilder<DID, V, C> {
-        let builder = self.to_builder();
-        builder.with_not_before(not_before)
-    }
 }
 
 impl<DID: Did + Clone, V: varsig::Header<C> + Clone, C: Codec> DelegationBuilder<DID, V, C>
 where
     Ipld: Encode<C>,
 {
-    pub fn try_finalize(self) -> Result<Delegation<DID, V, C>, crate::crypto::signature::SignError>
+    pub fn try_sign(self) -> Result<Delegation<DID, V, C>, crate::crypto::signature::SignError>
     where
         <DID as FromStr>::Err: std::fmt::Debug,
     {
@@ -181,35 +144,32 @@ where
         Delegation::try_sign(&self.signer, self.varsig_header, payload)
     }
 
-    pub fn with_via(mut self, via: DID) -> DelegationBuilder<DID, V, C> {
+    pub fn via(mut self, via: DID) -> DelegationBuilder<DID, V, C> {
         self.via = Some(via);
         self
     }
 
-    pub fn with_policy(mut self, policy: Vec<Predicate>) -> DelegationBuilder<DID, V, C> {
+    pub fn policy(mut self, policy: Vec<Predicate>) -> DelegationBuilder<DID, V, C> {
         self.policy = policy;
         self
     }
 
-    pub fn with_nonce(mut self, nonce: Nonce) -> DelegationBuilder<DID, V, C> {
+    pub fn nonce(mut self, nonce: Nonce) -> DelegationBuilder<DID, V, C> {
         self.nonce = Some(nonce);
         self
     }
 
-    pub fn with_metadata(
-        mut self,
-        metadata: BTreeMap<String, Ipld>,
-    ) -> DelegationBuilder<DID, V, C> {
+    pub fn metadata(mut self, metadata: BTreeMap<String, Ipld>) -> DelegationBuilder<DID, V, C> {
         self.metadata = metadata;
         self
     }
 
-    pub fn with_expiration(mut self, expiration: Timestamp) -> DelegationBuilder<DID, V, C> {
+    pub fn expiration(mut self, expiration: Timestamp) -> DelegationBuilder<DID, V, C> {
         self.expiration = Some(expiration);
         self
     }
 
-    pub fn with_not_before(mut self, not_before: Timestamp) -> DelegationBuilder<DID, V, C> {
+    pub fn not_before(mut self, not_before: Timestamp) -> DelegationBuilder<DID, V, C> {
         self.not_before = Some(not_before);
         self
     }
@@ -387,8 +347,8 @@ mod tests {
 
         fn fixture() -> DelegationRequired {
             let (alice, alice_signer) = gen_did();
-            let (bob, bob_signer) = gen_did();
-            let (carol, carol_signer) = gen_did();
+            let (bob, _bob_signer) = gen_did();
+            let (carol, _carol_signer) = gen_did();
 
             DelegationRequired {
                 subject: Subject::Any,
@@ -405,50 +365,60 @@ mod tests {
         }
 
         #[test_log::test]
-        fn test_finalize() -> TestResult {
-            let delegation = fixture().try_finalize();
+        fn test_sign() -> TestResult {
+            let delegation = fixture().into_builder().try_sign();
             assert_matches!(delegation, Ok(_));
             Ok(())
         }
 
         #[test_log::test]
-        fn test_finalize_with_metadata() -> TestResult {
+        fn test_sign_with_metadata() -> TestResult {
             let meta = BTreeMap::from_iter([("foo".into(), 123.into())]);
-            let delegation = fixture().with_metadata(meta.clone()).try_finalize()?;
+            let delegation = fixture().into_builder().metadata(meta.clone()).try_sign()?;
+
             assert_eq!(delegation.metadata(), &meta);
             Ok(())
         }
 
         #[test_log::test]
-        fn test_finalize_with_via() -> TestResult {
+        fn test_sign_with_via() -> TestResult {
             let (alice, _) = gen_did();
-            let delegation = fixture().with_via(alice.clone()).try_finalize()?;
+            let delegation = fixture().into_builder().via(alice.clone()).try_sign()?;
             assert_eq!(delegation.via(), Some(alice).as_ref());
             Ok(())
         }
 
         #[test_log::test]
-        fn test_finalize_with_policy() -> TestResult {
+        fn test_sign_with_policy() -> TestResult {
             let pred = Predicate::Equal(FromStr::from_str(".foo")?, 123.into());
-            let delegation = fixture().with_policy(vec![pred.clone()]).try_finalize()?;
+            let delegation = fixture()
+                .into_builder()
+                .policy(vec![pred.clone()])
+                .try_sign()?;
 
             assert_eq!(delegation.policy(), &vec![pred]);
             Ok(())
         }
 
         #[test_log::test]
-        fn test_finalize_with_expiration() -> TestResult {
+        fn test_sign_with_expiration() -> TestResult {
             let exp = Timestamp::now();
-            let delegation = fixture().with_expiration(exp.clone()).try_finalize()?;
+            let delegation = fixture()
+                .into_builder()
+                .expiration(exp.clone())
+                .try_sign()?;
 
             assert_eq!(delegation.expiration(), Some(&exp));
             Ok(())
         }
 
         #[test_log::test]
-        fn test_finalize_with_not_before() -> TestResult {
+        fn test_sign_with_not_before() -> TestResult {
             let nbf = Timestamp::now();
-            let delegation = fixture().with_not_before(nbf.clone()).try_finalize()?;
+            let delegation = fixture()
+                .into_builder()
+                .not_before(nbf.clone())
+                .try_sign()?;
 
             assert_eq!(delegation.not_before(), Some(&nbf));
             Ok(())
@@ -475,10 +445,11 @@ mod tests {
                     codec: encoding::Preset::DagCbor,
                 }),
             }
-            .with_via(carol)
-            .with_policy(vec![])
-            .with_metadata(BTreeMap::from_iter([("foo".into(), 123.into())]))
-            .try_finalize()
+            .into_builder()
+            .via(carol)
+            .policy(vec![])
+            .metadata(BTreeMap::from_iter([("foo".into(), 123.into())]))
+            .try_sign()
         }
 
         #[test_log::test]

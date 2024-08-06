@@ -2,13 +2,11 @@
   description = "ucan";
 
   inputs = {
-    nixpkgs.url = "nixpkgs/nixos-23.11";
+    nixpkgs.url = "nixpkgs/nixos-24.05";
     nixos-unstable.url = "nixpkgs/nixos-unstable-small";
 
     command-utils.url = "github:expede/nix-command-utils";
-
     flake-utils.url = "github:numtide/flake-utils";
-    devshell.url = "github:numtide/devshell";
 
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
@@ -19,7 +17,6 @@
 
   outputs = {
     self,
-    devshell,
     flake-utils,
     nixos-unstable,
     nixpkgs,
@@ -29,7 +26,6 @@
     flake-utils.lib.eachDefaultSystem (
       system: let
         overlays = [
-          devshell.overlays.default
           (import rust-overlay)
         ];
 
@@ -102,7 +98,7 @@
           "release:host" = cmd "Build release for ${system}"
             "${cargo} build --release";
 
-          "release:wasm:web" = cmd "Build release for wasm32-unknown-unknown with web bindings"
+         "release:wasm:web" = cmd "Build release for wasm32-unknown-unknown with web bindings"
             "${wasm-pack} build --release --target=web";
 
           "release:wasm:nodejs" = cmd "Build release for wasm32-unknown-unknown with Node.js bindgings"
@@ -115,7 +111,7 @@
 
           "build:wasm:web" = cmd "Build for wasm32-unknown-unknown with web bindings"
             "${wasm-pack} build --dev --target=web";
-
+ 
           "build:wasm:nodejs" = cmd "Build for wasm32-unknown-unknown with Node.js bindgings"
             "${wasm-pack} build --dev --target=nodejs";
 
@@ -174,7 +170,7 @@
             "test:host && test:docs && test:wasm";
 
           "test:host" = cmd "Run Cargo tests for host target"
-            "${cargo} test --features=test_utils";
+            "${cargo} test --features=mermaid_docs,test_utils";
 
           "test:wasm" = cmd "Run wasm-pack tests on all targets"
             "test:wasm:node && test:wasm:chrome";
@@ -220,7 +216,6 @@
               self.packages.${system}.irust
               (pkgs.hiPrio pkgs.rust-bin.nightly.latest.rustfmt)
 
-              pre-commit
               pkgs.wasm-pack
               chromedriver
               protobuf
@@ -234,8 +229,6 @@
             ++ lib.optionals stdenv.isDarwin darwin-installs;
 
           shellHook = ''
-            [ -e .git/hooks/pre-commit ] || pre-commit install --install-hooks && pre-commit install --hook-type commit-msg
-
             export RUSTC_WRAPPER="${pkgs.sccache}/bin/sccache"
             unset SOURCE_DATE_EPOCH
           ''
