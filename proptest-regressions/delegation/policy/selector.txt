@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 7d58a6b190e172b6e8336a5ee53de75608728b67f299b38738cac62d7bfc9633 # shrinks to sel = Selector([ArrayIndex(0)])
+cc a896af81439f52a08c2a281bfeebaf4427d3ee97a99f77440deee54c8a8ae7ff # shrinks to sel = Selector([Field("_")])

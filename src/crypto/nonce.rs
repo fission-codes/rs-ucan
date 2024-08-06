@@ -1,0 +1,227 @@
+//! [Nonce]s & utilities.
+//!
+//! [Nonce]: https://en.wikipedia.org/wiki/Cryptographic_nonce
+
+use enum_as_inner::EnumAsInner;
+use getrandom::getrandom;
+use libipld_core::{ipld::Ipld, multibase::Base::Base32HexLower};
+use serde::{Deserialize, Serialize};
+use std::fmt;
+
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
+
+#[cfg(feature = "test_utils")]
+use proptest::prelude::*;
+
+/// Known [`Nonce`] types
+#[derive(Clone, Debug, EnumAsInner, Serialize, Deserialize)]
+pub enum Nonce {
+    /// 128-bit, 16-byte nonce
+    Nonce16([u8; 16]),
+
+    /// Dynamic sized nonce
+    Custom(Vec<u8>),
+}
+
+impl PartialEq for Nonce {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Nonce::Nonce16(a), Nonce::Nonce16(b)) => a == b,
+            (Nonce::Custom(a), Nonce::Custom(b)) => a == b,
+            (Nonce::Custom(a), Nonce::Nonce16(b)) => a.as_slice() == b,
+            (Nonce::Nonce16(a), Nonce::Custom(b)) => a == b.as_slice(),
+        }
+    }
+}
+
+impl From<[u8; 16]> for Nonce {
+    fn from(s: [u8; 16]) -> Self {
+        Nonce::Nonce16(s)
+    }
+}
+
+impl From<Nonce> for Vec<u8> {
+    fn from(nonce: Nonce) -> Self {
+        match nonce {
+            Nonce::Nonce16(nonce) => nonce.to_vec(),
+            Nonce::Custom(nonce) => nonce,
+        }
+    }
+}
+
+impl From<Vec<u8>> for Nonce {
+    fn from(nonce: Vec<u8>) -> Self {
+        if let Ok(sixteen) = <[u8; 16]>::try_from(nonce.clone()) {
+            return sixteen.into();
+        }
+
+        Nonce::Custom(nonce)
+    }
+}
+
+impl Nonce {
+    /// Generate a 128-bit, 16-byte nonce
+    ///
+    /// # Arguments
+    ///
+    /// * `salt` - A salt. This may be left empty, but is recommended to avoid collision.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use ucan::crypto::Nonce;
+    /// # use ucan::did::Did;
+    /// #
+    /// let mut salt = "did:example:123".as_bytes().to_vec();
+    /// let nonce = Nonce::generate_16();
+    ///
+    /// assert_eq!(Vec::from(nonce).len(), 16);
+    /// ```
+    pub fn generate_16() -> Nonce {
+        let mut buf = [0; 16];
+        getrandom(&mut buf).expect("irrecoverable getrandom failure");
+        Nonce::Nonce16(buf)
+    }
+}
+
+impl fmt::Display for Nonce {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Nonce::Nonce16(nonce) => {
+                write!(f, "{}", Base32HexLower.encode(nonce.as_slice()))
+            }
+            Nonce::Custom(nonce) => {
+                write!(f, "{}", Base32HexLower.encode(nonce.as_slice()))
+            }
+        }
+    }
+}
+
+impl From<Nonce> for Ipld {
+    fn from(nonce: Nonce) -> Self {
+        match nonce {
+            Nonce::Nonce16(nonce) => Ipld::Bytes(nonce.to_vec()),
+            Nonce::Custom(nonce) => Ipld::Bytes(nonce),
+        }
+    }
+}
+
+impl TryFrom<Ipld> for Nonce {
+    type Error = (); // FIXME
+
+    fn try_from(ipld: Ipld) -> Result<Self, Self::Error> {
+        if let Ipld::Bytes(v) = ipld {
+            match v.len() {
+                16 => Ok(Nonce::Nonce16(
+                    v.try_into()
+                        .expect("16 bytes because we checked in the match"),
+                )),
+                _ => Ok(Nonce::Custom(v)),
+            }
+        } else {
+            Err(())
+        }
+    }
+}
+
+#[cfg(feature = "test_utils")]
+impl Arbitrary for Nonce {
+    type Parameters = ();
+    type Strategy = BoxedStrategy<Self>;
+
+    fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
+        prop_oneof![
+            any::<[u8; 16]>().prop_map(Nonce::Nonce16),
+            any::<Vec<u8>>().prop_map(Nonce::Custom)
+        ]
+        .boxed()
+    }
+}
+
+// FIXME move module?
+#[cfg(target_arch = "wasm32")]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[wasm_bindgen]
+/// A JavaScript-compatible wrapper for [`Nonce`]
+pub struct JsNonce(#[wasm_bindgen(skip)] pub Nonce);
+
+#[cfg(target_arch = "wasm32")]
+impl From<JsNonce> for Nonce {
+    fn from(newtype: JsNonce) -> Self {
+        newtype.0
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl From<Nonce> for JsNonce {
+    fn from(nonce: Nonce) -> Self {
+        JsNonce(nonce)
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen]
+impl JsNonce {
+    /// Generate a 128-bit, 16-byte nonce
+    ///
+    /// # Arguments
+    ///
+    /// * `salt` - A salt. This may be left empty, but is recommended to avoid collision.
+    pub fn generate_16() -> JsNonce {
+        Nonce::generate_16().into()
+    }
+
+    /// Directly lift a 12-byte `Uint8Array` into a [`JsNonce`]
+    ///
+    /// # Arguments
+    ///
+    /// * `nonce` - The exact nonce to convert to a [`JsNonce`]
+    pub fn from_uint8_array(arr: Box<[u8]>) -> JsNonce {
+        Nonce::from(arr.to_vec()).into()
+    }
+
+    /// Expose the underlying bytes of a [`JsNonce`] as a 12-byte `Uint8Array`
+    ///
+    /// # Arguments
+    ///
+    /// * `self` - The [`JsNonce`] to convert to a `Uint8Array`
+    pub fn to_uint8_array(&self) -> Box<[u8]> {
+        match &self.0 {
+            Nonce::Nonce12(nonce) => nonce.to_vec().into_boxed_slice(),
+            Nonce::Nonce16(nonce) => nonce.to_vec().into_boxed_slice(),
+            Nonce::Custom(nonce) => nonce.clone().into_boxed_slice(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    // FIXME prop test with lots of inputs
+    #[test]
+    fn ipld_roundtrip_16() {
+        let gen = Nonce::generate_16();
+        let ipld = Ipld::from(gen.clone());
+
+        let inner = if let Nonce::Nonce16(nonce) = gen {
+            Ipld::Bytes(nonce.to_vec())
+        } else {
+            panic!("No conversion!")
+        };
+
+        assert_eq!(ipld, inner);
+        assert_eq!(gen, ipld.try_into().unwrap());
+    }
+
+    // FIXME prop test with lots of inputs
+    // #[test]
+    // fn ser_de() {
+    //     let gen = Nonce::generate_16();
+    //     let ser = serde_json::to_string(&gen).unwrap();
+    //     let de = serde_json::from_str(&ser).unwrap();
+
+    //     assert_eq!(gen, de);
+    // }
+}

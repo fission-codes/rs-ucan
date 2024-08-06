@@ -1,27 +1,67 @@
-//! RS256 signature support
+//! RS256 signature support (2048-bit RSA PKCS #1 v1.5).
 
-#[cfg(feature = "rs256-verifier")]
-use anyhow::anyhow;
-#[cfg(feature = "rs256-verifier")]
-use signature::Verifier;
+use rsa;
+use signature::{SignatureEncoding, Signer, Verifier};
 
-use super::JWSSignature;
+/// The verifying/public key for RS256.
+#[derive(Debug, Clone)]
+pub struct VerifyingKey(pub rsa::pkcs1v15::VerifyingKey<rsa::sha2::Sha256>);
 
-impl JWSSignature for rsa::pkcs1v15::Signature {
-    const ALGORITHM: &'static str = "RS256";
+impl PartialEq for VerifyingKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.as_ref() == other.0.as_ref()
+    }
 }
 
-/// A verifier for RS256 signatures
-#[cfg(feature = "rs256-verifier")]
-pub fn rs256_verifier(key: &[u8], payload: &[u8], signature: &[u8]) -> Result<(), anyhow::Error> {
-    let key = rsa::pkcs1::DecodeRsaPublicKey::from_pkcs1_der(key)
-        .map_err(|e| anyhow!("invalid PKCS#1 key, {}", e))?;
+impl Eq for VerifyingKey {}
 
-    let key = rsa::pkcs1v15::VerifyingKey::<rsa::sha2::Sha256>::new(key);
+impl Verifier<Signature> for VerifyingKey {
+    fn verify(&self, msg: &[u8], signature: &Signature) -> Result<(), signature::Error> {
+        self.0.verify(msg, &signature.0)
+    }
+}
 
-    let signature = rsa::pkcs1v15::Signature::try_from(signature)
-        .map_err(|e| anyhow!("invalid RSASSA-PKCS1-v1_5 signature, {}", e))?;
+/// The signing/secret key for RS256.
+#[derive(Debug, Clone)]
+pub struct SigningKey(pub rsa::pkcs1v15::SigningKey<rsa::sha2::Sha256>);
 
-    key.verify(payload, &signature)
-        .map_err(|e| anyhow!("signature mismatch, {}", e))
+impl Signer<Signature> for SigningKey {
+    fn try_sign(&self, msg: &[u8]) -> Result<Signature, signature::Error> {
+        self.0.try_sign(msg).map(Signature)
+    }
+}
+
+/// The signature for RS256.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Signature(pub rsa::pkcs1v15::Signature);
+
+impl SignatureEncoding for Signature {
+    type Repr = [u8; 256];
+}
+
+impl From<[u8; 256]> for Signature {
+    fn from(bytes: [u8; 256]) -> Self {
+        Signature(
+            rsa::pkcs1v15::Signature::try_from(bytes.as_ref())
+                .expect("passed in [u8; 256], so should succeed"),
+        )
+    }
+}
+
+impl From<Signature> for [u8; 256] {
+    fn from(sig: Signature) -> [u8; 256] {
+        sig.0
+            .to_bytes()
+            .as_ref()
+            .try_into()
+            .expect("Signature should be exactly 256 bytes")
+    }
+}
+
+impl<'a> TryFrom<&'a [u8]> for Signature {
+    type Error = signature::Error;
+
+    fn try_from(bytes: &'a [u8]) -> Result<Self, Self::Error> {
+        rsa::pkcs1v15::Signature::try_from(bytes).map(Signature)
+    }
 }
