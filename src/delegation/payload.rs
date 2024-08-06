@@ -8,7 +8,6 @@ use crate::{
     time::{TimeBoundError, Timestamp},
 };
 use core::str::FromStr;
-use derive_builder::Builder;
 use libipld_core::ipld::Ipld;
 use std::{collections::BTreeMap, fmt::Debug};
 use thiserror::Error;
@@ -24,7 +23,7 @@ use crate::ipld;
 ///
 /// This contains the semantic information about the delegation, including the
 /// issuer, subject, audience, the delegated ability, time bounds, and so on.
-#[derive(Debug, Clone, PartialEq, Builder)] // FIXME Serialize, Deserialize, Builder)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Payload<DID: Did> {
     /// The subject of the [`Delegation`].
     ///
@@ -36,7 +35,7 @@ pub struct Payload<DID: Did> {
     /// by the subject.
     ///
     /// [`Delegation`]: super::Delegation
-    pub subject: Option<DID>,
+    pub subject: Subject<DID>,
 
     /// The issuer of the [`Delegation`].
     ///
@@ -50,40 +49,100 @@ pub struct Payload<DID: Did> {
     pub audience: DID,
 
     /// A [`Did`] that must be in the delegation chain at invocation time.
-    #[builder(default)]
     pub via: Option<DID>,
 
     /// The command being delegated.
     pub command: String,
 
     /// Any [`Predicate`] policies that constrain the `args` on an [`Invocation`][crate::invocation::Invocation].
-    #[builder(default)]
     pub policy: Vec<Predicate>,
 
     /// Extensible, free-form fields.
-    #[builder(default)]
     pub metadata: BTreeMap<String, Ipld>,
 
     /// A [cryptographic nonce] to ensure that the UCAN's [`Cid`] is unique.
     ///
     /// [cryptograpgic nonce]: https://en.wikipedia.org/wiki/Cryptographic_nonce
     /// [`Cid`]: libipld_core::cid::Cid ;
-    #[builder(default = "Nonce::generate_16()")]
     pub nonce: Nonce,
 
     /// The latest wall-clock time that the UCAN is valid until,
     /// given as a [Unix timestamp].
     ///
     /// [Unix timestamp]: https://en.wikipedia.org/wiki/Unix_time
-    #[builder(default)]
     pub expiration: Option<Timestamp>,
 
     /// An optional earliest wall-clock time that the UCAN is valid from,
     /// given as a [Unix timestamp].
     ///
     /// [Unix timestamp]: https://en.wikipedia.org/wiki/Unix_time
-    #[builder(default)]
     pub not_before: Option<Timestamp>,
+}
+
+pub struct Required<DID> {
+    pub subject: Subject<DID>,
+    pub issuer: DID,
+    pub audience: DID,
+    pub command: String,
+}
+
+impl<DID: Did> From<Required<DID>> for Payload<DID> {
+    fn from(required: Required<DID>) -> Self {
+        Payload {
+            subject: required.subject,
+            issuer: required.issuer,
+            audience: required.audience,
+            command: required.command,
+            policy: vec![],
+            metadata: BTreeMap::new(),
+            nonce: Nonce::generate_16(),
+            expiration: None,
+            not_before: None,
+            via: None,
+        }
+    }
+}
+
+impl<DID: Did> Required<DID> {
+    pub fn build(self) -> Payload<DID> {
+        self.into()
+    }
+
+    pub fn with_via(self, via: Option<DID>) -> Payload<DID> {
+        let mut payload: Payload<DID> = self.into();
+        payload.via = via;
+        payload
+    }
+
+    pub fn with_policy(self, policy: Vec<Predicate>) -> Payload<DID> {
+        let mut payload: Payload<DID> = self.into();
+        payload.policy = policy;
+        payload
+    }
+
+    pub fn with_metadata(self, metadata: BTreeMap<String, Ipld>) -> Payload<DID> {
+        let mut payload: Payload<DID> = self.into();
+        payload.metadata = metadata;
+        payload
+    }
+
+    pub fn with_nonce(self, nonce: Nonce) -> Payload<DID> {
+        let mut payload: Payload<DID> = self.into();
+        payload.nonce = nonce;
+        payload
+    }
+
+    pub fn with_expiration(self, expiration: Option<Timestamp>) -> Payload<DID> {
+        let mut payload: Payload<DID> = self.into();
+        payload.expiration = expiration;
+        payload
+    }
+
+    pub fn with_not_before(self, not_before: Option<Timestamp>) -> Payload<DID> {
+        let mut payload: Payload<DID> = self.into();
+        payload.not_before = not_before;
+        payload
+    }
 }
 
 impl<DID: Did> Payload<DID> {
@@ -103,6 +162,53 @@ impl<DID: Did> Payload<DID> {
         }
 
         Ok(())
+    }
+
+    pub fn with_via(&mut self, via: Option<DID>) -> &mut Payload<DID> {
+        self.via = via;
+        self
+    }
+
+    pub fn with_policy(&mut self, policy: Vec<Predicate>) -> &mut Payload<DID> {
+        self.policy = policy;
+        self
+    }
+
+    pub fn with_metadata(&mut self, metadata: BTreeMap<String, Ipld>) -> &mut Payload<DID> {
+        self.metadata = metadata;
+        self
+    }
+
+    pub fn with_nonce(&mut self, nonce: Nonce) -> &mut Payload<DID> {
+        self.nonce = nonce;
+        self
+    }
+
+    pub fn with_expiration(&mut self, expiration: Option<Timestamp>) -> &mut Payload<DID> {
+        self.expiration = expiration;
+        self
+    }
+
+    pub fn with_not_before(&mut self, not_before: Option<Timestamp>) -> &mut Payload<DID> {
+        self.not_before = not_before;
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd)]
+pub enum Subject<DID> {
+    Known(DID),
+    Any,
+}
+
+impl<DID: Ord> Ord for Subject<DID> {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        match (self, other) {
+            (Subject::Any, Subject::Any) => core::cmp::Ordering::Equal,
+            (Subject::Any, Subject::Known(_)) => core::cmp::Ordering::Less,
+            (Subject::Known(_), Subject::Any) => core::cmp::Ordering::Greater,
+            (Subject::Known(a), Subject::Known(b)) => a.cmp(b),
+        }
     }
 }
 
@@ -138,10 +244,10 @@ where
             match k.as_str() {
                 "sub" => {
                     subject = Some(match ipld {
-                        Ipld::Null => None,
-                        Ipld::String(s) => {
-                            Some(DID::from_str(s.as_str()).map_err(ParseError::DidParseError)?)
-                        }
+                        Ipld::Null => Subject::Any,
+                        Ipld::String(s) => Subject::Known(
+                            DID::from_str(s.as_str()).map_err(ParseError::DidParseError)?,
+                        ),
                         bad => return Err(ParseError::WrongTypeForField("sub".to_string(), bad)),
                     })
                 }
@@ -318,7 +424,7 @@ impl<DID: Did> From<Payload<DID>> for Named<Ipld> {
             ),
         ]);
 
-        if let Some(subject) = payload.subject {
+        if let Subject::Known(subject) = payload.subject {
             args.insert("sub".to_string(), Ipld::String(subject.to_string()));
         } else {
             args.insert("sub".to_string(), Ipld::Null);
@@ -367,7 +473,7 @@ where
         )
             .prop_map(
                 |(
-                    subject,
+                    maybe_subject,
                     issuer,
                     audience,
                     command,
@@ -380,7 +486,6 @@ where
                 )| {
                     Payload {
                         issuer,
-                        subject,
                         audience,
                         command,
                         policy,
@@ -389,6 +494,10 @@ where
                         expiration,
                         not_before,
                         via,
+                        subject: match maybe_subject {
+                            None => Subject::Any,
+                            Some(s) => Subject::Known(s),
+                        },
                     }
                 },
             )
@@ -453,10 +562,10 @@ mod tests {
 
             // Optional Fields
             match (payload.subject, named.get("sub")) {
-                (Some(sub), Some(Ipld::String(s))) => {
+                (Subject::Known(sub), Some(Ipld::String(s))) => {
                     prop_assert_eq!(&sub.to_string(), s);
                 }
-                (None, Some(Ipld::Null)) => prop_assert!(true),
+                (Subject::Any, Some(Ipld::Null)) => prop_assert!(true),
                 _ => prop_assert!(false)
             }
 

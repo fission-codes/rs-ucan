@@ -3,7 +3,7 @@ use crate::ability::arguments::Named;
 use crate::delegation;
 use crate::{
     crypto::varsig,
-    delegation::{policy::Predicate, Delegation},
+    delegation::{policy::Predicate, Delegation, Subject},
     did::{self, Did},
 };
 use libipld_core::codec::Encode;
@@ -90,7 +90,7 @@ struct MemoryStoreInner<
     C: Codec = varsig::encoding::Preset,
 > {
     ucans: BTreeMap<Cid, Arc<Delegation<DID, V, C>>>,
-    index: BTreeMap<Option<DID>, BTreeMap<DID, BTreeSet<Cid>>>,
+    index: BTreeMap<Subject<DID>, BTreeMap<DID, BTreeSet<Cid>>>,
     revocations: BTreeSet<Cid>,
 }
 
@@ -160,7 +160,7 @@ where
         let mut tx = self.lock();
 
         tx.index
-            .entry(delegation.subject().cloned())
+            .entry(delegation.subject().clone())
             .or_default()
             .entry(delegation.audience().clone())
             .or_default()
@@ -188,8 +188,12 @@ where
         let blank_map = BTreeMap::new();
         let tx = self.lock();
 
-        let all_powerlines = tx.index.get(&None).unwrap_or(&blank_map);
-        let all_aud_for_subject = tx.index.get(&Some(subject.clone())).unwrap_or(&blank_map);
+        let all_powerlines = tx.index.get(&Subject::Any).unwrap_or(&blank_map);
+        let all_aud_for_subject = tx
+            .index
+            .get(&Subject::Known(subject.clone()))
+            .unwrap_or(&blank_map);
+
         let powerline_candidates = all_powerlines.get(aud).unwrap_or(&blank_set);
         let sub_candidates = all_aud_for_subject.get(aud).unwrap_or(&blank_set);
 
@@ -251,7 +255,7 @@ where
                         let issuer = delegation.issuer().clone();
 
                         // Hit a root delegation, AKA base case
-                        if Some(&issuer) == delegation.subject() {
+                        if Subject::Known(issuer.clone()) == *delegation.subject() {
                             break 'outer;
                         }
 
@@ -327,12 +331,13 @@ mod tests {
         let deleg = Delegation::try_sign(
             &signer,
             varsig_header,
-            crate::delegation::PayloadBuilder::default()
-                .subject(None)
-                .issuer(did.clone())
-                .audience(did.clone())
-                .command("/".into())
-                .build()?,
+            crate::delegation::Required {
+                subject: Subject::Any,
+                issuer: did.clone(),
+                audience: did.clone(),
+                command: "/".into(),
+            }
+            .into(),
         )?;
 
         store.insert(deleg.clone())?;
@@ -355,12 +360,13 @@ mod tests {
         let deleg = Delegation::try_sign(
             &signer,
             varsig_header,
-            crate::delegation::PayloadBuilder::default()
-                .subject(None)
-                .issuer(did.clone())
-                .audience(did.clone())
-                .command("/".into())
-                .build()?,
+            crate::delegation::Required {
+                subject: Subject::Any,
+                issuer: did.clone(),
+                audience: did.clone(),
+                command: "/".into(),
+            }
+            .into(),
         )?;
 
         store.insert(deleg.clone())?;
@@ -413,12 +419,13 @@ mod tests {
             let deleg = crate::Delegation::try_sign(
                 &alice_signer,
                 varsig_header.clone(),
-                crate::delegation::PayloadBuilder::default()
-                    .subject(None)
-                    .issuer(alice.clone())
-                    .audience(bob.clone())
-                    .command("/".into())
-                    .build()?,
+                crate::delegation::Required {
+                    subject: crate::delegation::Subject::Any,
+                    issuer: alice.clone(),
+                    audience: bob.clone(),
+                    command: "/".into(),
+                }
+                .into(),
             )?;
 
             store.insert(deleg.clone())?;
@@ -444,12 +451,13 @@ mod tests {
             let noise = crate::Delegation::try_sign(
                 &bob_signer,
                 varsig_header.clone(),
-                crate::delegation::PayloadBuilder::default()
-                    .subject(None)
-                    .issuer(bob.clone())
-                    .audience(carol.clone())
-                    .command("/example".into())
-                    .build()?,
+                crate::delegation::Required {
+                    subject: crate::delegation::Subject::Any,
+                    issuer: bob.clone(),
+                    audience: carol.clone(),
+                    command: "/example".into(),
+                }
+                .into(),
             )?;
 
             store.insert(noise.clone())?;
@@ -457,12 +465,13 @@ mod tests {
             let deleg = crate::Delegation::try_sign(
                 &alice_signer,
                 varsig_header.clone(),
-                crate::delegation::PayloadBuilder::default()
-                    .subject(None)
-                    .issuer(alice.clone())
-                    .audience(bob.clone())
-                    .command("/".into())
-                    .build()?,
+                crate::delegation::Required {
+                    subject: crate::delegation::Subject::Any,
+                    issuer: alice.clone(),
+                    audience: bob.clone(),
+                    command: "/".into(),
+                }
+                .into(),
             )?;
 
             store.insert(deleg.clone())?;
@@ -470,12 +479,13 @@ mod tests {
             let more_noise = crate::Delegation::try_sign(
                 &alice_signer,
                 varsig_header.clone(),
-                crate::delegation::PayloadBuilder::default()
-                    .subject(None)
-                    .issuer(alice.clone())
-                    .audience(carol.clone())
-                    .command("/test".into())
-                    .build()?,
+                crate::delegation::Required {
+                    subject: crate::delegation::Subject::Any,
+                    issuer: alice.clone(),
+                    audience: carol.clone(),
+                    command: "/test".into(),
+                }
+                .into(),
             )?;
 
             store.insert(more_noise.clone())?;
@@ -501,12 +511,13 @@ mod tests {
             let deleg_1 = crate::Delegation::try_sign(
                 &alice_signer,
                 varsig_header.clone(),
-                crate::delegation::PayloadBuilder::default()
-                    .subject(None)
-                    .issuer(alice.clone())
-                    .audience(bob.clone())
-                    .command("/".into())
-                    .build()?,
+                crate::delegation::Required {
+                    subject: crate::delegation::Subject::Any,
+                    issuer: alice.clone(),
+                    audience: bob.clone(),
+                    command: "/".into(),
+                }
+                .into(),
             )?;
 
             store.insert(deleg_1.clone())?;
@@ -514,12 +525,13 @@ mod tests {
             let deleg_2 = crate::Delegation::try_sign(
                 &bob_signer,
                 varsig_header.clone(),
-                crate::delegation::PayloadBuilder::default()
-                    .subject(Some(alice.clone()))
-                    .issuer(bob.clone())
-                    .audience(carol.clone())
-                    .command("/".into())
-                    .build()?,
+                crate::delegation::Required {
+                    subject: crate::delegation::Subject::Known(alice.clone()),
+                    issuer: bob.clone(),
+                    audience: carol.clone(),
+                    command: "/".into(),
+                }
+                .into(),
             )?;
 
             store.insert(deleg_2.clone())?;
@@ -555,12 +567,13 @@ mod tests {
             let deleg_1 = crate::Delegation::try_sign(
                 &alice_signer,
                 varsig_header.clone(),
-                crate::delegation::PayloadBuilder::default()
-                    .subject(None)
-                    .issuer(alice.clone())
-                    .audience(bob.clone())
-                    .command("/test".into())
-                    .build()?,
+                crate::delegation::Required {
+                    subject: crate::delegation::Subject::Any,
+                    issuer: alice.clone(),
+                    audience: bob.clone(),
+                    command: "/test".into(),
+                }
+                .into(),
             )?;
 
             store.insert(deleg_1.clone())?;
@@ -568,12 +581,13 @@ mod tests {
             let deleg_2 = crate::Delegation::try_sign(
                 &bob_signer,
                 varsig_header.clone(),
-                crate::delegation::PayloadBuilder::default()
-                    .subject(Some(alice.clone()))
-                    .issuer(bob.clone())
-                    .audience(carol.clone())
-                    .command("/test/me".into())
-                    .build()?,
+                crate::delegation::Required {
+                    subject: crate::delegation::Subject::Known(alice.clone()),
+                    issuer: bob.clone(),
+                    audience: carol.clone(),
+                    command: "/test/me".into(),
+                }
+                .into(),
             )?;
 
             store.insert(deleg_2.clone())?;
@@ -616,12 +630,13 @@ mod tests {
             let alice_to_bob = crate::Delegation::try_sign(
                 &alice_signer,
                 varsig_header.clone(),
-                crate::delegation::PayloadBuilder::default()
-                    .subject(None)
-                    .issuer(alice.clone())
-                    .audience(bob.clone())
-                    .command("/test".into())
-                    .build()?,
+                crate::delegation::Required {
+                    subject: crate::delegation::Subject::Any,
+                    issuer: alice.clone(),
+                    audience: bob.clone(),
+                    command: "/test".into(),
+                }
+                .into(),
             )?;
 
             store.insert(alice_to_bob.clone())?;
@@ -629,12 +644,13 @@ mod tests {
             let carol_to_dan = crate::Delegation::try_sign(
                 &carol_signer,
                 varsig_header.clone(),
-                crate::delegation::PayloadBuilder::default()
-                    .subject(Some(alice.clone()))
-                    .issuer(carol.clone())
-                    .audience(dan.clone())
-                    .command("/test/me".into())
-                    .build()?,
+                crate::delegation::Required {
+                    subject: crate::delegation::Subject::Known(alice.clone()),
+                    issuer: carol.clone(),
+                    audience: dan.clone(),
+                    command: "/test/me".into(),
+                }
+                .into(),
             )?;
 
             store.insert(carol_to_dan.clone())?;
@@ -675,36 +691,39 @@ mod tests {
             let bob_to_carol = crate::Delegation::try_sign(
                 &bob_signer,
                 varsig_header.clone(),
-                crate::delegation::PayloadBuilder::default()
-                    .subject(None)
-                    .issuer(bob.clone())
-                    .audience(carol.clone())
-                    .command("/".into())
-                    .build()?,
+                crate::delegation::Required {
+                    subject: crate::delegation::Subject::Any,
+                    issuer: bob.clone(),
+                    audience: carol.clone(),
+                    command: "/".into(),
+                }
+                .into(),
             )?;
 
             // 2.                      carol -a-> dave
             let carol_to_dave = crate::Delegation::try_sign(
                 &carol_signer,
                 varsig_header.clone(),
-                crate::delegation::PayloadBuilder::default()
-                    .subject(None)
-                    .issuer(carol.clone())
-                    .audience(dave.clone())
-                    .command("/".into())
-                    .build()?, // I don't love this is now failable
+                crate::delegation::Required {
+                    subject: crate::delegation::Subject::Any,
+                    issuer: carol.clone(),
+                    audience: dave.clone(),
+                    command: "/".into(),
+                }
+                .into(),
             )?;
 
             // 3.  alice -d-> bob
             let alice_to_bob = crate::Delegation::try_sign(
                 &alice_signer,
                 varsig_header.clone(),
-                crate::delegation::PayloadBuilder::default()
-                    .subject(Some(alice.clone()))
-                    .issuer(alice.clone())
-                    .audience(bob.clone())
-                    .command("/".into())
-                    .build()?,
+                crate::delegation::Required {
+                    subject: crate::delegation::Subject::Known(alice.clone()),
+                    issuer: alice.clone(),
+                    audience: bob.clone(),
+                    command: "/".into(),
+                }
+                .into(),
             )?;
 
             store.insert(bob_to_carol.clone())?;
@@ -756,36 +775,39 @@ mod tests {
             let bob_to_carol = crate::Delegation::try_sign(
                 &bob_signer,
                 varsig_header.clone(),
-                crate::delegation::PayloadBuilder::default()
-                    .subject(None)
-                    .issuer(bob.clone())
-                    .audience(carol.clone())
-                    .command("/".into())
-                    .build()?,
+                crate::delegation::Required {
+                    subject: crate::delegation::Subject::Any,
+                    issuer: bob.clone(),
+                    audience: carol.clone(),
+                    command: "/".into(),
+                }
+                .into(),
             )?;
 
             // 2.                      carol -a-> dave
             let carol_to_dave = crate::Delegation::try_sign(
                 &carol_signer,
                 varsig_header.clone(),
-                crate::delegation::PayloadBuilder::default()
-                    .subject(None)
-                    .issuer(carol.clone())
-                    .audience(dave.clone())
-                    .command("/".into())
-                    .build()?, // I don't love this is now failable
+                crate::delegation::Required {
+                    subject: crate::delegation::Subject::Any,
+                    issuer: carol.clone(),
+                    audience: dave.clone(),
+                    command: "/".into(),
+                }
+                .into(),
             )?;
 
             // 3.  alice -d-> bob
             let alice_to_bob = crate::Delegation::try_sign(
                 &alice_signer,
                 varsig_header.clone(),
-                crate::delegation::PayloadBuilder::default()
-                    .subject(Some(alice.clone()))
-                    .issuer(alice.clone())
-                    .audience(bob.clone())
-                    .command("/".into())
-                    .build()?,
+                crate::delegation::Required {
+                    subject: crate::delegation::Subject::Known(alice.clone()),
+                    issuer: alice.clone(),
+                    audience: bob.clone(),
+                    command: "/".into(),
+                }
+                .into(),
             )?;
 
             store.insert(bob_to_carol.clone())?;

@@ -8,6 +8,7 @@ use crate::{
     delegation::{
         self,
         policy::{selector::SelectorError, Predicate},
+        Subject,
     },
     did::{Did, Verifiable},
     time::{Expired, Timestamp},
@@ -179,7 +180,7 @@ impl<A, DID: Did> Payload<A, DID> {
                     return Err(ValidationError::MisalignedIssAud.into());
                 }
 
-                if let Some(proof_subject) = &proof.subject {
+                if let Subject::Known(proof_subject) = &proof.subject {
                     if self.subject != *proof_subject {
                         return Err(ValidationError::InvalidSubject.into());
                     }

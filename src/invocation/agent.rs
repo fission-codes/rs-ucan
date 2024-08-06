@@ -638,36 +638,39 @@ mod tests {
             let account_to_server = crate::Delegation::try_sign(
                 &account_signer,
                 varsig_header.clone(),
-                crate::delegation::PayloadBuilder::default()
-                    .subject(None)
-                    .issuer(account.clone())
-                    .audience(server.clone())
-                    .command("/".into())
-                    .build()?,
+                crate::delegation::Required {
+                    subject: crate::delegation::Subject::Any,
+                    issuer: account.clone(),
+                    audience: server.clone(),
+                    command: "/".into(),
+                }
+                .into(),
             )?;
 
             // 2.                            server -a-> device
             let server_to_device = crate::Delegation::try_sign(
                 &server_signer,
                 varsig_header.clone(), // FIXME can also put this on a builder
-                crate::delegation::PayloadBuilder::default()
-                    .subject(None) // FIXME needs a sibject when we figure out powerbox
-                    .issuer(server.clone())
-                    .audience(device.clone())
-                    .command("/".into())
-                    .build()?, // I don't love this is now failable
+                crate::delegation::Required {
+                    subject: crate::delegation::Subject::Any,
+                    issuer: server.clone(),
+                    audience: device.clone(),
+                    command: "/".into(),
+                }
+                .into(),
             )?;
 
             // 3.  dnslink -d-> account
             let dnslink_to_account = crate::Delegation::try_sign(
                 &dnslink_signer,
                 varsig_header.clone(),
-                crate::delegation::PayloadBuilder::default()
-                    .subject(Some(dnslink.clone()))
-                    .issuer(dnslink.clone())
-                    .audience(account.clone())
-                    .command("/".into())
-                    .build()?,
+                crate::delegation::Required {
+                    subject: crate::delegation::Subject::Known(dnslink.clone()),
+                    issuer: dnslink.clone(),
+                    audience: account.clone(),
+                    command: "/".into(),
+                }
+                .into(),
             )?;
 
             del_store.insert(account_to_server.clone())?;

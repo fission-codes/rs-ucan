@@ -2,6 +2,7 @@ use super::{payload::Payload, policy::Predicate, store::Store, Delegation};
 use crate::{
     ability::arguments::Named,
     crypto::{signature::Envelope, varsig, Nonce},
+    delegation::Subject,
     did,
     did::Did,
     time::Timestamp,
@@ -58,7 +59,7 @@ where
     pub fn delegate(
         &self,
         audience: DID,
-        subject: Option<&DID>,
+        subject: Subject<&DID>,
         via: Option<DID>,
         command: String,
         new_policy: Vec<Predicate>,
@@ -71,9 +72,11 @@ where
         let nonce = Nonce::generate_16();
 
         let (subject, policy) = match subject {
-            Some(subject) if *subject == self.did => (Some(subject.clone()), new_policy),
-            None => (None, new_policy),
-            Some(subject) => {
+            Subject::Known(subject) if *subject == self.did => {
+                (Subject::Known(subject.clone()), new_policy)
+            }
+            Subject::Any => (Subject::Any, new_policy),
+            Subject::Known(subject) => {
                 let proofs = &self
                     .store
                     .get_chain(&self.did, &subject, &command, vec![], now)
@@ -83,7 +86,7 @@ where
 
                 let mut policy = to_delegate.policy.clone();
                 policy.extend(new_policy);
-                (Some(subject.clone()), policy)
+                (Subject::Known(subject.clone()), policy)
             }
         };
 
@@ -101,6 +104,7 @@ where
         };
 
         Ok(Delegation::try_sign(&self.signer, varsig_header, payload).expect("FIXME"))
+        // FIXME
     }
 
     pub fn receive(
